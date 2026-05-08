@@ -18,7 +18,7 @@ NC='\033[0m' # No Color
 mkdir -p "$LOG_DIR"
 
 echo "=========================================="
-echo "  SWAT Fault Inject Platform v1.1.3"
+echo "  SWAT Fault Inject Platform v1.1.4"
 echo "  Starting services..."
 echo "=========================================="
 

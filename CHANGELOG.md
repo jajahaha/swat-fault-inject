@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.4] - 2026-05-08
+
+### Added
+
+- 默认数据库配置新增 openGauss 和 GaussDB 示例
+  - 本地测试数据库
+  - openGauss示例 (opengauss, 192.168.1.100:5432)
+  - GaussDB示例 (gaussdb, 192.168.1.200:8000)
+
+### Fixed
+
+- 修复前端路由切换时数据不刷新的问题
+  - 引入 useLocation hook 监听路由变化
+  - useEffect 依赖数组改为 [location.pathname]
+
+### Changed
+
+- 后端测试用例更新（验证3种默认数据库配置）
+- 版本号：1.1.3 -> 1.1.4
+
 ## [1.1.3] - 2026-05-08
 
 ### Added
