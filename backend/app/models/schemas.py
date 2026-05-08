@@ -1,0 +1,78 @@
+from pydantic import BaseModel
+from typing import Optional, Dict, Any
+from datetime import datetime
+
+
+class DatabaseConfigCreate(BaseModel):
+    name: str
+    host: str
+    port: int
+    database: str
+    username: str
+    password: str
+
+
+class DatabaseConfigUpdate(BaseModel):
+    name: Optional[str] = None
+    host: Optional[str] = None
+    port: Optional[int] = None
+    database: Optional[str] = None
+    username: Optional[str] = None
+    password: Optional[str] = None
+
+
+class DatabaseConfigResponse(BaseModel):
+    id: int
+    name: str
+    host: str
+    port: int
+    database: str
+    username: str
+    password: str
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+
+
+class FaultScenarioCreate(BaseModel):
+    name: str
+    type: str
+    description: Optional[str] = None
+    config: Dict[str, Any]
+
+
+class FaultScenarioUpdate(BaseModel):
+    name: Optional[str] = None
+    type: Optional[str] = None
+    description: Optional[str] = None
+    config: Optional[Dict[str, Any]] = None
+
+
+class FaultScenarioResponse(BaseModel):
+    id: int
+    name: str
+    type: str
+    description: Optional[str] = None
+    config: Dict[str, Any]
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+
+
+class InjectionStartRequest(BaseModel):
+    scenario_id: int
+    db_config_id: int
+
+
+class InjectionRecordResponse(BaseModel):
+    id: int
+    scenario_id: int
+    db_config_id: int
+    status: str
+    started_at: Optional[str] = None
+    ended_at: Optional[str] = None
+    log: Optional[str] = None
+
+
+class ConnectionTestResponse(BaseModel):
+    success: bool
+    message: str
+    server_version: Optional[str] = None

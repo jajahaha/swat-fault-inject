@@ -1,0 +1,119 @@
+from fastapi import APIRouter, HTTPException
+from sqlalchemy import select, delete
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import sessionmaker
+
+from app.database import async_session, DatabaseConfig
+from app.models.schemas import (
+    DatabaseConfigCreate,
+    DatabaseConfigUpdate,
+    DatabaseConfigResponse,
+    ConnectionTestResponse,
+)
+import asyncpg
+
+router = APIRouter(prefix="/api/database-configs", tags=["database-configs"])
+
+
+@router.get("", response_model=list[DatabaseConfigResponse])
+async def get_database_configs():
+    async with async_session() as session:
+        result = await session.execute(select(DatabaseConfig))
+        configs = result.scalars().all()
+        return [config.to_dict() for config in configs]
+
+
+@router.get("/{config_id}", response_model=DatabaseConfigResponse)
+async def get_database_config(config_id: int):
+    async with async_session() as session:
+        result = await session.execute(
+            select(DatabaseConfig).where(DatabaseConfig.id == config_id)
+        )
+        config = result.scalar_one_or_none()
+        if not config:
+            raise HTTPException(status_code=404, detail="Database config not found")
+        return config.to_dict()
+
+
+@router.post("", response_model=DatabaseConfigResponse)
+async def create_database_config(config: DatabaseConfigCreate):
+    async with async_session() as session:
+        db_config = DatabaseConfig(
+            name=config.name,
+            host=config.host,
+            port=config.port,
+            database=config.database,
+            username=config.username,
+            password=config.password,
+        )
+        session.add(db_config)
+        await session.commit()
+        await session.refresh(db_config)
+        return db_config.to_dict()
+
+
+@router.put("/{config_id}", response_model=DatabaseConfigResponse)
+async def update_database_config(config_id: int, config: DatabaseConfigUpdate):
+    async with async_session() as session:
+        result = await session.execute(
+            select(DatabaseConfig).where(DatabaseConfig.id == config_id)
+        )
+        db_config = result.scalar_one_or_none()
+        if not db_config:
+            raise HTTPException(status_code=404, detail="Database config not found")
+
+        update_data = config.model_dump(exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(db_config, key, value)
+
+        await session.commit()
+        await session.refresh(db_config)
+        return db_config.to_dict()
+
+
+@router.delete("/{config_id}")
+async def delete_database_config(config_id: int):
+    async with async_session() as session:
+        result = await session.execute(
+            select(DatabaseConfig).where(DatabaseConfig.id == config_id)
+        )
+        db_config = result.scalar_one_or_none()
+        if not db_config:
+            raise HTTPException(status_code=404, detail="Database config not found")
+
+        await session.delete(db_config)
+        await session.commit()
+        return {"message": "Database config deleted successfully"}
+
+
+@router.post("/{config_id}/test", response_model=ConnectionTestResponse)
+async def test_database_connection(config_id: int):
+    async with async_session() as session:
+        result = await session.execute(
+            select(DatabaseConfig).where(DatabaseConfig.id == config_id)
+        )
+        db_config = result.scalar_one_or_none()
+        if not db_config:
+            raise HTTPException(status_code=404, detail="Database config not found")
+
+    try:
+        conn = await asyncpg.connect(
+            host=db_config.host,
+            port=db_config.port,
+            database=db_config.database,
+            user=db_config.username,
+            password=db_config.password,
+            timeout=10,
+        )
+        version = await conn.fetchval("SELECT version()")
+        await conn.close()
+        return ConnectionTestResponse(
+            success=True,
+            message="Connection successful",
+            server_version=version,
+        )
+    except Exception as e:
+        return ConnectionTestResponse(
+            success=False,
+            message=f"Connection failed: {str(e)}",
+        )
