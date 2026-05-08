@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, select
 from datetime import datetime
 import json
 
@@ -90,3 +90,75 @@ class InjectionRecord(Base):
 async def init_db():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
+    # Insert default data
+    async with async_session() as session:
+        # Check if default database config exists
+        result = await session.execute(
+            select(DatabaseConfig).where(DatabaseConfig.name == "本地测试数据库")
+        )
+        if result.scalar_one_or_none() is None:
+            default_db = DatabaseConfig(
+                name="本地测试数据库",
+                host="127.0.0.1",
+                port=5432,
+                database="postgres",
+                username="lcj",
+                password="",
+            )
+            session.add(default_db)
+
+        # Check if default fault scenario exists
+        result = await session.execute(
+            select(FaultScenario).where(FaultScenario.name == "高并发CPU压力测试")
+        )
+        if result.scalar_one_or_none() is None:
+            default_scenario = FaultScenario(
+                name="高并发CPU压力测试",
+                type="high_concurrency",
+                description="通过50个并发连接持续执行CPU密集型SQL查询，模拟SQL并发过高导致CPU打满的场景",
+                config=json.dumps({
+                    "concurrency": 50,
+                    "duration_seconds": 60,
+                    "interval_ms": 100,
+                    "query_template": "SELECT count(*) FROM pg_catalog.pg_class a, pg_catalog.pg_class b, pg_catalog.pg_class c WHERE a.oid = b.oid AND b.oid = c.oid"
+                }),
+            )
+            session.add(default_scenario)
+
+        # Add more default scenarios
+        result = await session.execute(
+            select(FaultScenario).where(FaultScenario.name == "连接耗尽测试")
+        )
+        if result.scalar_one_or_none() is None:
+            conn_exhaustion_scenario = FaultScenario(
+                name="连接耗尽测试",
+                type="connection_exhaustion",
+                description="创建大量连接耗尽数据库连接池，模拟连接资源耗尽场景",
+                config=json.dumps({
+                    "concurrency": 200,
+                    "duration_seconds": 30,
+                    "interval_ms": 0,
+                    "query_template": "SELECT 1"
+                }),
+            )
+            session.add(conn_exhaustion_scenario)
+
+        result = await session.execute(
+            select(FaultScenario).where(FaultScenario.name == "慢查询测试")
+        )
+        if result.scalar_one_or_none() is None:
+            slow_query_scenario = FaultScenario(
+                name="慢查询测试",
+                type="slow_query",
+                description="执行复杂SQL查询消耗数据库资源，模拟慢查询场景",
+                config=json.dumps({
+                    "concurrency": 10,
+                    "duration_seconds": 60,
+                    "interval_ms": 500,
+                    "query_template": "SELECT pg_sleep(1)"
+                }),
+            )
+            session.add(slow_query_scenario)
+
+        await session.commit()

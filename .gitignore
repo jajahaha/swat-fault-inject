@@ -33,6 +33,8 @@ frontend/dist/
 .DS_Store
 Thumbs.db
 
-# Environment
+# Logs
+logs/
+*.log
 .env
 .env.local

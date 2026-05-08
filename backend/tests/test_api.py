@@ -41,10 +41,14 @@ class TestDatabaseConfigAPI:
         assert data["port"] == 5432
         assert "id" in data
 
-    async def test_get_database_configs_empty(self, client):
+    async def test_get_database_configs_has_default(self, client):
         response = await client.get("/api/database-configs")
         assert response.status_code == 200
-        assert response.json() == []
+        data = response.json()
+        assert len(data) >= 1  # Has default config
+        # Check default database config exists
+        default_found = any(db["name"] == "本地测试数据库" for db in data)
+        assert default_found
 
     async def test_get_database_configs_with_data(self, client):
         # 先创建一个配置
@@ -62,8 +66,10 @@ class TestDatabaseConfigAPI:
         response = await client.get("/api/database-configs")
         assert response.status_code == 200
         data = response.json()
-        assert len(data) == 1
-        assert data[0]["name"] == "测试DB"
+        assert len(data) >= 2  # Default + new config
+        # Check the new config exists
+        new_found = any(db["name"] == "测试DB" for db in data)
+        assert new_found
 
     async def test_get_single_database_config(self, client):
         # 创建配置
@@ -161,10 +167,14 @@ class TestFaultScenarioAPI:
         assert data["type"] == "high_concurrency"
         assert data["config"]["concurrency"] == 50
 
-    async def test_get_fault_scenarios_empty(self, client):
+    async def test_get_fault_scenarios_has_default(self, client):
         response = await client.get("/api/fault-scenarios")
         assert response.status_code == 200
-        assert response.json() == []
+        data = response.json()
+        assert len(data) >= 3  # Has default scenarios
+        # Check default scenarios exist
+        high_concurrency_found = any(s["name"] == "高并发CPU压力测试" for s in data)
+        assert high_concurrency_found
 
     async def test_get_fault_scenarios_with_data(self, client):
         await client.post(
@@ -177,7 +187,7 @@ class TestFaultScenarioAPI:
         )
         response = await client.get("/api/fault-scenarios")
         assert response.status_code == 200
-        assert len(response.json()) == 1
+        assert len(response.json()) >= 4  # Default 3 + new 1
 
     async def test_update_fault_scenario(self, client):
         create_response = await client.post(
