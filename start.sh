@@ -17,6 +17,12 @@ NC='\033[0m' # No Color
 # Create log directory
 mkdir -p "$LOG_DIR"
 
+# Ensure database file has correct permissions
+DB_FILE="$BACKEND_DIR/data.db"
+if [ -f "$DB_FILE" ]; then
+    chmod 666 "$DB_FILE"
+fi
+
 echo "=========================================="
 echo "  SWAT Fault Inject Platform v1.1.4"
 echo "  Starting services..."
