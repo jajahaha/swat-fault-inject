@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.1] - 2026-05-08
+
+### Added
+
+- 一键启动脚本（start.sh）
+  - 自动检测端口占用
+  - 健康检查等待服务启动
+  - PID 文件追踪
+  - 日志输出到 logs/ 目录
+- 一键关闭脚本（stop.sh）
+  - 进程 PID 精准关闭
+  - 端口强制释放
+  - 关闭状态验证
+
 ## [1.1.0] - 2026-05-08
 
 ### Added
