@@ -111,6 +111,38 @@ async def init_db():
             )
             session.add(default_db)
 
+        # Check if default openGauss config exists
+        result = await session.execute(
+            select(DatabaseConfig).where(DatabaseConfig.name == "openGauss示例")
+        )
+        if result.scalar_one_or_none() is None:
+            opengauss_db = DatabaseConfig(
+                name="openGauss示例",
+                db_type="opengauss",
+                host="192.168.1.100",
+                port=5432,
+                database="postgres",
+                username="omm",
+                password="",
+            )
+            session.add(opengauss_db)
+
+        # Check if default GaussDB config exists
+        result = await session.execute(
+            select(DatabaseConfig).where(DatabaseConfig.name == "GaussDB示例")
+        )
+        if result.scalar_one_or_none() is None:
+            gaussdb_db = DatabaseConfig(
+                name="GaussDB示例",
+                db_type="gaussdb",
+                host="192.168.1.200",
+                port=8000,
+                database="postgres",
+                username="root",
+                password="",
+            )
+            session.add(gaussdb_db)
+
         # Check if default fault scenario exists
         result = await session.execute(
             select(FaultScenario).where(FaultScenario.name == "高并发CPU压力测试")

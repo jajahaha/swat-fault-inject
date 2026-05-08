@@ -89,13 +89,21 @@ class TestDatabaseConfigAPI:
         response = await client.get("/api/database-configs")
         assert response.status_code == 200
         data = response.json()
-        assert len(data) >= 1  # Has default config
-        # Check default database config exists
-        default_found = any(db["name"] == "本地测试数据库" for db in data)
-        assert default_found
+        assert len(data) >= 3  # Has default configs (postgresql, opengauss, gaussdb)
+        # Check default database configs exist
+        postgresql_found = any(db["name"] == "本地测试数据库" for db in data)
+        opengauss_found = any(db["name"] == "openGauss示例" for db in data)
+        gaussdb_found = any(db["name"] == "GaussDB示例" for db in data)
+        assert postgresql_found
+        assert opengauss_found
+        assert gaussdb_found
         # Check default has db_type
         default_db = next(db for db in data if db["name"] == "本地测试数据库")
         assert default_db["db_type"] == "postgresql"
+        opengauss_db = next(db for db in data if db["name"] == "openGauss示例")
+        assert opengauss_db["db_type"] == "opengauss"
+        gaussdb_db = next(db for db in data if db["name"] == "GaussDB示例")
+        assert gaussdb_db["db_type"] == "gaussdb"
 
     async def test_get_database_configs_with_data(self, client):
         # 先创建一个配置
@@ -114,7 +122,7 @@ class TestDatabaseConfigAPI:
         response = await client.get("/api/database-configs")
         assert response.status_code == 200
         data = response.json()
-        assert len(data) >= 2  # Default + new config
+        assert len(data) >= 4  # Default 3 + new 1
         # Check the new config exists
         new_found = any(db["name"] == "测试DB" for db in data)
         assert new_found
