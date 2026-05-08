@@ -6,6 +6,7 @@ import {
   Form,
   Input,
   InputNumber,
+  Select,
   Space,
   message,
   Tag,
@@ -14,8 +15,15 @@ import {
 import { PlusOutlined, EditOutlined, DeleteOutlined, LinkOutlined } from '@ant-design/icons'
 import { databaseConfigApi } from '../api'
 
+const DB_TYPE_COLORS = {
+  postgresql: 'blue',
+  opengauss: 'green',
+  gaussdb: 'orange',
+}
+
 function DatabaseConfig() {
   const [configs, setConfigs] = useState([])
+  const [dbTypes, setDbTypes] = useState([])
   const [loading, setLoading] = useState(false)
   const [modalVisible, setModalVisible] = useState(false)
   const [editingConfig, setEditingConfig] = useState(null)
@@ -23,6 +31,7 @@ function DatabaseConfig() {
 
   useEffect(() => {
     loadConfigs()
+    loadDbTypes()
   }, [])
 
   const loadConfigs = async () => {
@@ -36,9 +45,24 @@ function DatabaseConfig() {
     setLoading(false)
   }
 
+  const loadDbTypes = async () => {
+    try {
+      const response = await databaseConfigApi.getTypes()
+      setDbTypes(response.data)
+    } catch (error) {
+      // Use default types if API fails
+      setDbTypes([
+        { value: 'postgresql', label: 'PostgreSQL', default_port: 5432 },
+        { value: 'opengauss', label: 'openGauss', default_port: 5432 },
+        { value: 'gaussdb', label: 'GaussDB', default_port: 8000 },
+      ])
+    }
+  }
+
   const handleCreate = () => {
     setEditingConfig(null)
     form.resetFields()
+    form.setFieldsValue({ db_type: 'postgresql', port: 5432 })
     setModalVisible(true)
   }
 
@@ -46,6 +70,13 @@ function DatabaseConfig() {
     setEditingConfig(record)
     form.setFieldsValue(record)
     setModalVisible(true)
+  }
+
+  const handleDbTypeChange = (value) => {
+    const selectedType = dbTypes.find(t => t.value === value)
+    if (selectedType) {
+      form.setFieldsValue({ port: selectedType.default_port })
+    }
   }
 
   const handleDelete = async (id) => {
@@ -90,6 +121,15 @@ function DatabaseConfig() {
 
   const columns = [
     { title: '名称', dataIndex: 'name', key: 'name' },
+    {
+      title: '类型',
+      dataIndex: 'db_type',
+      key: 'db_type',
+      render: (type) => {
+        const typeInfo = dbTypes.find(t => t.value === type) || { label: type }
+        return <Tag color={DB_TYPE_COLORS[type] || 'default'}>{typeInfo.label}</Tag>
+      },
+    },
     { title: '主机', dataIndex: 'host', key: 'host' },
     { title: '端口', dataIndex: 'port', key: 'port' },
     { title: '数据库', dataIndex: 'database', key: 'database' },
@@ -157,7 +197,20 @@ function DatabaseConfig() {
             label="配置名称"
             rules={[{ required: true, message: '请输入配置名称' }]}
           >
-            <Input placeholder="例如: 生产环境PostgreSQL" />
+            <Input placeholder="例如: 生产环境数据库" />
+          </Form.Item>
+          <Form.Item
+            name="db_type"
+            label="数据库类型"
+            rules={[{ required: true, message: '请选择数据库类型' }]}
+          >
+            <Select onChange={handleDbTypeChange}>
+              {dbTypes.map(type => (
+                <Select.Option key={type.value} value={type.value}>
+                  {type.label} (默认端口: {type.default_port})
+                </Select.Option>
+              ))}
+            </Select>
           </Form.Item>
           <Form.Item
             name="host"
@@ -171,7 +224,7 @@ function DatabaseConfig() {
             label="端口"
             rules={[{ required: true, message: '请输入端口' }]}
           >
-            <InputNumber placeholder="5432" min={1} max={65535} />
+            <InputNumber min={1} max={65535} />
           </Form.Item>
           <Form.Item
             name="database"
@@ -190,9 +243,8 @@ function DatabaseConfig() {
           <Form.Item
             name="password"
             label="密码"
-            rules={[{ required: true, message: '请输入密码' }]}
           >
-            <Input.Password placeholder="数据库密码" />
+            <Input.Password placeholder="数据库密码（可为空）" />
           </Form.Item>
         </Form>
       </Modal>

@@ -19,6 +19,7 @@ class DatabaseConfig(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(100), nullable=False)
+    db_type = Column(String(50), nullable=False, default="postgresql")  # postgresql, opengauss, gaussdb
     host = Column(String(255), nullable=False)
     port = Column(Integer, nullable=False)
     database = Column(String(100), nullable=False)
@@ -31,6 +32,7 @@ class DatabaseConfig(Base):
         return {
             "id": self.id,
             "name": self.name,
+            "db_type": self.db_type,
             "host": self.host,
             "port": self.port,
             "database": self.database,
@@ -100,6 +102,7 @@ async def init_db():
         if result.scalar_one_or_none() is None:
             default_db = DatabaseConfig(
                 name="本地测试数据库",
+                db_type="postgresql",
                 host="127.0.0.1",
                 port=5432,
                 database="postgres",

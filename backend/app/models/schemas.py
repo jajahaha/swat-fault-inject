@@ -5,6 +5,7 @@ from datetime import datetime
 
 class DatabaseConfigCreate(BaseModel):
     name: str
+    db_type: str = "postgresql"  # postgresql, opengauss, gaussdb
     host: str
     port: int
     database: str
@@ -14,6 +15,7 @@ class DatabaseConfigCreate(BaseModel):
 
 class DatabaseConfigUpdate(BaseModel):
     name: Optional[str] = None
+    db_type: Optional[str] = None
     host: Optional[str] = None
     port: Optional[int] = None
     database: Optional[str] = None
@@ -24,6 +26,7 @@ class DatabaseConfigUpdate(BaseModel):
 class DatabaseConfigResponse(BaseModel):
     id: int
     name: str
+    db_type: str
     host: str
     port: int
     database: str

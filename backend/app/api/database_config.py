@@ -14,6 +14,18 @@ import asyncpg
 
 router = APIRouter(prefix="/api/database-configs", tags=["database-configs"])
 
+# Supported database types
+SUPPORTED_DB_TYPES = [
+    {"value": "postgresql", "label": "PostgreSQL", "default_port": 5432},
+    {"value": "opengauss", "label": "openGauss", "default_port": 5432},
+    {"value": "gaussdb", "label": "GaussDB", "default_port": 8000},
+]
+
+
+@router.get("/types")
+async def get_database_types():
+    return SUPPORTED_DB_TYPES
+
 
 @router.get("", response_model=list[DatabaseConfigResponse])
 async def get_database_configs():
@@ -40,6 +52,7 @@ async def create_database_config(config: DatabaseConfigCreate):
     async with async_session() as session:
         db_config = DatabaseConfig(
             name=config.name,
+            db_type=config.db_type,
             host=config.host,
             port=config.port,
             database=config.database,
@@ -96,6 +109,7 @@ async def test_database_connection(config_id: int):
         if not db_config:
             raise HTTPException(status_code=404, detail="Database config not found")
 
+    # PostgreSQL, openGauss, GaussDB all use PostgreSQL protocol
     try:
         conn = await asyncpg.connect(
             host=db_config.host,
@@ -109,11 +123,11 @@ async def test_database_connection(config_id: int):
         await conn.close()
         return ConnectionTestResponse(
             success=True,
-            message="Connection successful",
+            message=f"{db_config.db_type} 连接成功",
             server_version=version,
         )
     except Exception as e:
         return ConnectionTestResponse(
             success=False,
-            message=f"Connection failed: {str(e)}",
+            message=f"连接失败: {str(e)}",
         )

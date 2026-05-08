@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.3] - 2026-05-08
+
+### Added
+
+- 多数据库类型支持
+  - PostgreSQL (默认端口 5432)
+  - openGauss (默认端口 5432)
+  - GaussDB (默认端口 8000)
+- 数据库类型 API: `GET /api/database-configs/types`
+- 前端数据库类型选择器（自动填充默认端口）
+- 前端数据库类型标签显示（彩色区分）
+
+### Changed
+
+- 数据库配置模型新增 `db_type` 字段
+- 数据库配置 API 增加 `db_type` 参数
+- 测试用例适配多数据库类型
+- 测试框架优化（解决 pytest_asyncio 兼容性问题）
+
 ## [1.1.2] - 2026-05-08
 
 ### Added

@@ -12,6 +12,7 @@ export const databaseConfigApi = {
   update: (id, data) => api.put(`/database-configs/${id}`, data),
   delete: (id) => api.delete(`/database-configs/${id}`),
   testConnection: (id) => api.post(`/database-configs/${id}/test`),
+  getTypes: () => api.get('/database-configs/types'),
 }
 
 export const faultScenarioApi = {
