@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.2] - 2026-05-08
+
+### Added
+
+- 默认数据库配置自动保存
+  - 本地测试数据库 (127.0.0.1:5432/postgres/lcj)
+- 默认故障场景自动保存
+  - 高并发CPU压力测试 (50并发, 60秒)
+  - 连接耗尽测试 (200并发, 30秒)
+  - 慢查询测试 (10并发, pg_sleep)
+
+### Changed
+
+- 更新测试用例适配默认数据
+- 更新 .gitignore 排除 logs 目录
+
 ## [1.1.1] - 2026-05-08
 
 ### Added
