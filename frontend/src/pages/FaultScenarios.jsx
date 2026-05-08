@@ -17,7 +17,6 @@ import {
   Divider,
   Typography,
   Tag,
-  Tooltip,
 } from 'antd'
 import {
   PlusOutlined,
@@ -25,8 +24,8 @@ import {
   DeleteOutlined,
   ThunderboltOutlined,
   StopOutlined,
-  PlayCircleOutlined,
   HistoryOutlined,
+  FileTextOutlined,
 } from '@ant-design/icons'
 import { faultScenarioApi, injectionApi, databaseConfigApi } from '../api'
 
@@ -41,6 +40,8 @@ function FaultScenarios() {
   const [loading, setLoading] = useState(false)
   const [modalVisible, setModalVisible] = useState(false)
   const [injectModalVisible, setInjectModalVisible] = useState(false)
+  const [logModalVisible, setLogModalVisible] = useState(false)
+  const [selectedLog, setSelectedLog] = useState('')
   const [editingScenario, setEditingScenario] = useState(null)
   const [selectedScenario, setSelectedScenario] = useState(null)
   const [form] = Form.useForm()
@@ -154,6 +155,11 @@ function FaultScenarios() {
     } catch (error) {
       message.error('停止失败')
     }
+  }
+
+  const handleViewLog = (record) => {
+    setSelectedLog(record.log || '暂无日志记录')
+    setLogModalVisible(true)
   }
 
   const pollStatus = async (recordId) => {
@@ -289,9 +295,13 @@ function FaultScenarios() {
               停止
             </Button>
           )}
-          <Tooltip title={record.log || '无日志'}>
-            <Button size="small">查看日志</Button>
-          </Tooltip>
+          <Button
+            size="small"
+            icon={<FileTextOutlined />}
+            onClick={() => handleViewLog(record)}
+          >
+            查看日志
+          </Button>
         </Space>
       ),
     },
@@ -420,6 +430,28 @@ function FaultScenarios() {
             </Select>
           </Form.Item>
         </Form>
+      </Modal>
+
+      <Modal
+        title={<><FileTextOutlined /> 执行日志</>}
+        open={logModalVisible}
+        onCancel={() => setLogModalVisible(false)}
+        footer={<Button onClick={() => setLogModalVisible(false)}>关闭</Button>}
+        width={700}
+      >
+        <pre style={{
+          background: '#f5f5f5',
+          padding: '16px',
+          borderRadius: '4px',
+          maxHeight: '400px',
+          overflow: 'auto',
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-word',
+          fontFamily: 'monospace',
+          fontSize: '13px',
+        }}>
+          {selectedLog}
+        </pre>
       </Modal>
     </div>
   )

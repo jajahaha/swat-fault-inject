@@ -2,6 +2,7 @@ import asyncpg
 import asyncio
 from datetime import datetime
 import json
+from sqlalchemy import select
 
 from app.database import async_session, InjectionRecord
 
