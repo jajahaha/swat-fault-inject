@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
 import {
   Table,
   Button,
@@ -22,6 +23,7 @@ const DB_TYPE_COLORS = {
 }
 
 function DatabaseConfig() {
+  const location = useLocation()
   const [configs, setConfigs] = useState([])
   const [dbTypes, setDbTypes] = useState([])
   const [loading, setLoading] = useState(false)
@@ -29,10 +31,11 @@ function DatabaseConfig() {
   const [editingConfig, setEditingConfig] = useState(null)
   const [form] = Form.useForm()
 
+  // Load data when route changes to this page
   useEffect(() => {
     loadConfigs()
     loadDbTypes()
-  }, [])
+  }, [location.pathname])
 
   const loadConfigs = async () => {
     setLoading(true)

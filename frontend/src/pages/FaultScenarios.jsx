@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
 import {
   Card,
   Table,
@@ -33,6 +34,7 @@ const { TextArea } = Input
 const { Text } = Typography
 
 function FaultScenarios() {
+  const location = useLocation()
   const [scenarios, setScenarios] = useState([])
   const [dbConfigs, setDbConfigs] = useState([])
   const [records, setRecords] = useState([])
@@ -44,9 +46,10 @@ function FaultScenarios() {
   const [form] = Form.useForm()
   const [injectForm] = Form.useForm()
 
+  // Load data when route changes to this page
   useEffect(() => {
     loadData()
-  }, [])
+  }, [location.pathname])
 
   const loadData = async () => {
     setLoading(true)
