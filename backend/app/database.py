@@ -119,11 +119,11 @@ async def init_db():
             opengauss_db = DatabaseConfig(
                 name="openGauss示例",
                 db_type="opengauss",
-                host="192.168.1.100",
-                port=5432,
+                host="localhost",
+                port=5433,
                 database="postgres",
-                username="omm",
-                password="",
+                username="gaussdb",
+                password="Enmotech@123",
             )
             session.add(opengauss_db)
 
