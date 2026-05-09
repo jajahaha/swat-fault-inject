@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.1] - 2026-05-09
+
+### Added
+
+- **添加 Python 3.7 缺失依赖**
+  - importlib_metadata 4.13.0 (Python 3.7 backport)
+  - zipp 3.15.0 (importlib_metadata 依赖)
+  - Python 3.8+ 已内置 importlib.metadata，无需额外安装
+
+### Fixed
+
+- ModuleNotFoundError: No module named 'importlib_metadata'
+
 ## [1.3.0] - 2026-05-09
 
 ### Fixed

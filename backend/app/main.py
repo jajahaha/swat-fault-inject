@@ -17,7 +17,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="SWAT Fault Inject Platform",
     description="Database fault injection platform for testing high-load scenarios",
-    version="1.3.0",
+    version="1.3.1",
     lifespan=lifespan,
 )
 
@@ -36,4 +36,4 @@ app.include_router(injection_router)
 
 @app.get("/")
 async def root():
-    return {"message": "SWAT Fault Inject Platform API", "version": "1.3.0"}
+    return {"message": "SWAT Fault Inject Platform API", "version": "1.3.1"}
