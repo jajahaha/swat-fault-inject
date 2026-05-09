@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.2] - 2026-05-09
+
+### Added
+
+- **支持通过IP地址访问服务**
+  - 前端 Vite 配置添加 `host: '0.0.0.0'`
+  - 后端已配置为监听 `0.0.0.0` (所有网络接口)
+  - 可通过局域网IP访问：`http://<IP>:9020`
+
+### Usage
+
+- 本机访问: `http://localhost:9020`
+- 远程访问: `http://<服务器IP>:9020`
+- API访问: `http://<服务器IP>:9010`
+
 ## [1.4.1] - 2026-05-09
 
 ### Fixed
