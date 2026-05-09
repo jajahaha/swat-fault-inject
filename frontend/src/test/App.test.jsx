@@ -25,4 +25,11 @@ describe('App组件', () => {
 
     expect(screen.getByText('SWAT Fault Inject Platform')).toBeInTheDocument()
   })
+
+  it('应该显示版本号', () => {
+    renderWithRouter(<App />)
+
+    // 版本号应该在侧边栏底部显示
+    expect(screen.getByText(/v1\.1\.5/)).toBeInTheDocument()
+  })
 })

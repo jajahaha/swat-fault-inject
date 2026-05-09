@@ -24,7 +24,7 @@ if [ -f "$DB_FILE" ]; then
 fi
 
 echo "=========================================="
-echo "  SWAT Fault Inject Platform v1.1.4"
+echo "  SWAT Fault Inject Platform v1.1.5"
 echo "  Starting services..."
 echo "=========================================="
 

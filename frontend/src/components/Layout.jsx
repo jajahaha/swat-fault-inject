@@ -44,6 +44,9 @@ function Layout({ children }) {
             onClick={({ key }) => navigate(key)}
             style={{ height: '100%', borderRight: 0 }}
           />
+          <div style={{ padding: '16px', textAlign: 'center', color: '#999' }}>
+            v1.1.5
+          </div>
         </Sider>
         <Content
           style={{

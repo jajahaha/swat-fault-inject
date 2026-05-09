@@ -125,9 +125,6 @@ function FaultScenarios() {
   const handleInjectClick = (scenario) => {
     setSelectedScenario(scenario)
     injectForm.resetFields()
-    if (dbConfigs.length > 0) {
-      injectForm.setFieldsValue({ db_config_id: dbConfigs[0].id })
-    }
     setInjectModalVisible(true)
   }
 
@@ -421,13 +418,13 @@ function FaultScenarios() {
             label="目标数据库"
             rules={[{ required: true, message: '请选择目标数据库' }]}
           >
-            <Select placeholder="选择要注入故障的数据库">
-              {dbConfigs.map((config) => (
-                <Select.Option key={config.id} value={config.id}>
-                  {config.name} ({config.host}:{config.port}/{config.database})
-                </Select.Option>
-              ))}
-            </Select>
+            <Select
+              placeholder="选择要注入故障的数据库"
+              options={dbConfigs.map((config) => ({
+                value: config.id,
+                label: `${config.name} (${config.host}:${config.port}/${config.database})`,
+              }))}
+            />
           </Form.Item>
         </Form>
       </Modal>

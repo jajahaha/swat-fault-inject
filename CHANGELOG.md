@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.5] - 2026-05-09
+
+### Fixed
+
+- 修复注入历史记录时间显示问题
+  - UTC时间输出添加"Z"后缀，确保JavaScript正确解析为UTC时间
+  - 修复所有模型的 `to_dict()` 方法中的时间格式输出
+- 修复故障注入Modal中Select组件无法选择目标数据库的问题
+  - 使用 Ant Design 5.x 推荐的 `options` 属性替代 `<Select.Option>` 子元素
+  - 解决 Modal 内 Select 组件渲染问题
+
+### Added
+
+- 后端时间格式测试用例（3个）
+  - 数据库配置时间格式测试
+  - 故障场景时间格式测试
+  - 注入记录时间格式测试
+- 前端组件测试用例（5个）
+  - FaultScenarios 组件渲染测试
+  - Select options 属性测试
+  - 时间格式显示测试
+
 ## [1.1.4] - 2026-05-08
 
 ### Added

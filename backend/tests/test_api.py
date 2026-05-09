@@ -21,7 +21,7 @@ class TestRootEndpoint:
         assert response.status_code == 200
         data = response.json()
         assert data["message"] == "SWAT Fault Inject Platform API"
-        assert data["version"] == "1.1.4"
+        assert data["version"] == "1.1.5"
 
 
 class TestDatabaseConfigAPI:
@@ -306,3 +306,79 @@ class TestInjectionAPI:
     async def test_get_injection_status_not_found(self, client):
         response = await client.get("/api/injection/status/999")
         assert response.status_code == 404
+
+
+class TestTimestampFormat:
+    """测试时间戳格式 - UTC时间应带有Z后缀"""
+
+    async def test_database_config_timestamp_has_z_suffix(self, client):
+        """测试数据库配置的created_at和updated_at带有Z后缀"""
+        response = await client.get("/api/database-configs")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) >= 3
+        # Check first record has Z suffix in timestamps
+        first_record = data[0]
+        if first_record["created_at"]:
+            assert first_record["created_at"].endswith("Z")
+        if first_record["updated_at"]:
+            assert first_record["updated_at"].endswith("Z")
+
+    async def test_fault_scenario_timestamp_has_z_suffix(self, client):
+        """测试故障场景的created_at和updated_at带有Z后缀"""
+        response = await client.get("/api/fault-scenarios")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) >= 3
+        # Check first scenario has Z suffix in timestamps
+        first_scenario = data[0]
+        if first_scenario["created_at"]:
+            assert first_scenario["created_at"].endswith("Z")
+        if first_scenario["updated_at"]:
+            assert first_scenario["updated_at"].endswith("Z")
+
+    async def test_injection_record_timestamp_format(self, client):
+        """测试注入记录的时间格式"""
+        # Create a database config
+        db_response = await client.post(
+            "/api/database-configs",
+            json={
+                "name": "时间测试数据库",
+                "db_type": "postgresql",
+                "host": "localhost",
+                "port": 5432,
+                "database": "test",
+                "username": "user",
+                "password": "pass",
+            },
+        )
+        db_id = db_response.json()["id"]
+
+        # Create a fault scenario
+        scenario_response = await client.post(
+            "/api/fault-scenarios",
+            json={
+                "name": "时间测试场景",
+                "type": "slow_query",
+                "config": {"concurrency": 1, "duration_seconds": 1},
+            },
+        )
+        scenario_id = scenario_response.json()["id"]
+
+        # Start injection (will fail to connect but record is created)
+        inject_response = await client.post(
+            "/api/injection/start",
+            json={"scenario_id": scenario_id, "db_config_id": db_id},
+        )
+        # Even if injection fails, we can check the record format
+        records_response = await client.get("/api/injection/records")
+        records = records_response.json()
+
+        if len(records) > 0:
+            latest_record = records[0]  # Most recent
+            # started_at should have Z suffix
+            if latest_record["started_at"]:
+                assert latest_record["started_at"].endswith("Z")
+            # ended_at should have Z suffix if exists
+            if latest_record["ended_at"]:
+                assert latest_record["ended_at"].endswith("Z")
