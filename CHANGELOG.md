@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.1] - 2026-05-09
+
+### Fixed
+
+- **添加前端 ARM64 二进制依赖**
+  - @rollup/rollup-linux-arm64-gnu@4.60.3
+  - @esbuild/linux-arm64@0.21.5
+  - node_modules.tar.gz 现包含 x64 和 ARM64 双架构二进制
+
+### Problem
+
+- 之前 node_modules.tar.gz 只包含 x86_64 版本的 rollup/esbuild
+- ARM64 (aarch64) 机器运行 vite 时缺少二进制依赖
+
+### Solution
+
+- 手动下载 ARM64 版本的 rollup 和 esbuild 包
+- 解压到 node_modules 目录，与 x64 版本共存
+- 重新打包 node_modules.tar.gz（约 68MB）
+
 ## [1.4.0] - 2026-05-09
 
 ### Added
