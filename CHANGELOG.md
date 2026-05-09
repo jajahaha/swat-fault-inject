@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.7] - 2026-05-09
+
+### Added
+
+- 预打包所有依赖，支持离线安装
+  - Python 依赖包下载到 `backend/packages/` 目录（37个 wheel 文件）
+  - 前端依赖打包为 `frontend/node_modules.tar.gz`（67MB）
+  - 用户下载代码后执行 `./start.sh` 无需联网下载依赖
+
+### Changed
+
+- start.sh 优先从本地 packages 目录安装 Python 依赖
+- start.sh 自动解压 node_modules.tar.gz（如果 node_modules 不存在）
+- 更新 .gitignore 允许提交 packages 目录和 node_modules.tar.gz
+
 ## [1.1.6] - 2026-05-09
 
 ### Fixed

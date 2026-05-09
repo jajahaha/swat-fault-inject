@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # SWAT Fault Inject Platform - Start Script
-# Version: 1.1.6
+# Version: 1.1.7
 
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BACKEND_DIR="$PROJECT_DIR/backend"
@@ -25,7 +25,7 @@ if [ -f "$DB_FILE" ]; then
 fi
 
 echo "=========================================="
-echo "  SWAT Fault Inject Platform v1.1.6"
+echo "  SWAT Fault Inject Platform v1.1.7"
 echo "  Starting services..."
 echo "=========================================="
 
@@ -86,10 +86,16 @@ fi
 # Activate virtual environment
 source venv/bin/activate
 
-# Install dependencies if needed
-if [ ! -f "venv/.installed" ] || [ "requirements.txt" -nt "venv/.installed" ]; then
+# Install dependencies (prefer local packages for offline install)
+if [ ! -f "venv/.installed" ]; then
     echo -e "${YELLOW}Installing Python dependencies...${NC}"
-    pip install -r requirements.txt -q
+    if [ -d "packages" ] && [ "$(ls -A packages 2>/dev/null)" ]; then
+        echo -e "${BLUE}Installing from local packages directory...${NC}"
+        pip install --no-index --find-links=packages -r requirements.txt -q
+    else
+        echo -e "${BLUE}Downloading from PyPI mirror...${NC}"
+        pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple -q
+    fi
     if [ $? -ne 0 ]; then
         echo -e "${RED}Failed to install Python dependencies!${NC}"
         exit 1
@@ -101,13 +107,22 @@ fi
 echo -e "${BLUE}Checking frontend environment...${NC}"
 cd "$FRONTEND_DIR"
 
-# Install npm dependencies if needed
-if [ ! -d "node_modules" ] || [ "package.json" -nt "node_modules" ]; then
-    echo -e "${YELLOW}Installing npm dependencies...${NC}"
-    npm install --silent
-    if [ $? -ne 0 ]; then
-        echo -e "${RED}Failed to install npm dependencies!${NC}"
-        exit 1
+# Extract node_modules from archive if exists and node_modules not present
+if [ ! -d "node_modules" ]; then
+    if [ -f "node_modules.tar.gz" ]; then
+        echo -e "${YELLOW}Extracting node_modules from archive...${NC}"
+        tar -xzf node_modules.tar.gz
+        if [ $? -ne 0 ]; then
+            echo -e "${RED}Failed to extract node_modules!${NC}"
+            exit 1
+        fi
+    else
+        echo -e "${YELLOW}Installing npm dependencies...${NC}"
+        npm install --silent
+        if [ $? -ne 0 ]; then
+            echo -e "${RED}Failed to install npm dependencies!${NC}"
+            exit 1
+        fi
     fi
 fi
 

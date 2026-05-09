@@ -9,6 +9,10 @@ ENV/
 *.egg-info/
 dist/
 build/
+venv/.installed
+
+# Allow local packages for offline install
+!backend/packages/
 
 # Database
 *.db
@@ -19,6 +23,9 @@ node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Allow node_modules archive for offline install
+!frontend/node_modules.tar.gz
 
 # Build
 frontend/dist/
