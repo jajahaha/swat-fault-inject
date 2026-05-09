@@ -12,8 +12,9 @@ import {
   message,
   Tag,
   Popconfirm,
+  Tooltip,
 } from 'antd'
-import { PlusOutlined, EditOutlined, DeleteOutlined, LinkOutlined } from '@ant-design/icons'
+import { PlusOutlined, EditOutlined, DeleteOutlined, LinkOutlined, InfoCircleOutlined } from '@ant-design/icons'
 import { databaseConfigApi } from '../api'
 
 const DB_TYPE_COLORS = {
@@ -22,19 +23,29 @@ const DB_TYPE_COLORS = {
   gaussdb: 'orange',
 }
 
+const CONNECTION_METHOD_COLORS = {
+  asyncpg: 'blue',
+  psycopg2: 'green',
+  gsql: 'purple',
+  jdbc: 'orange',
+}
+
 function DatabaseConfig() {
   const location = useLocation()
   const [configs, setConfigs] = useState([])
   const [dbTypes, setDbTypes] = useState([])
+  const [connectionMethods, setConnectionMethods] = useState([])
   const [loading, setLoading] = useState(false)
   const [modalVisible, setModalVisible] = useState(false)
   const [editingConfig, setEditingConfig] = useState(null)
   const [form] = Form.useForm()
+  const [selectedDbType, setSelectedDbType] = useState('postgresql')
 
   // Load data when route changes to this page
   useEffect(() => {
     loadConfigs()
     loadDbTypes()
+    loadConnectionMethods()
   }, [location.pathname])
 
   const loadConfigs = async () => {
@@ -53,7 +64,6 @@ function DatabaseConfig() {
       const response = await databaseConfigApi.getTypes()
       setDbTypes(response.data)
     } catch (error) {
-      // Use default types if API fails
       setDbTypes([
         { value: 'postgresql', label: 'PostgreSQL', default_port: 5432 },
         { value: 'opengauss', label: 'openGauss', default_port: 5432 },
@@ -62,23 +72,51 @@ function DatabaseConfig() {
     }
   }
 
+  const loadConnectionMethods = async () => {
+    try {
+      const response = await databaseConfigApi.getConnectionMethods()
+      setConnectionMethods(response.data)
+    } catch (error) {
+      setConnectionMethods([
+        { value: 'asyncpg', label: 'asyncpg (Python异步驱动)', supported_db_types: ['postgresql'] },
+        { value: 'psycopg2', label: 'psycopg2 (Python同步驱动)', supported_db_types: ['postgresql', 'opengauss', 'gaussdb'] },
+        { value: 'gsql', label: 'gsql (命令行工具)', supported_db_types: ['opengauss', 'gaussdb'] },
+        { value: 'jdbc', label: 'JDBC (Java驱动)', supported_db_types: ['opengauss', 'gaussdb'] },
+      ])
+    }
+  }
+
   const handleCreate = () => {
     setEditingConfig(null)
     form.resetFields()
-    form.setFieldsValue({ db_type: 'postgresql', port: 5432, password: '' })
+    form.setFieldsValue({
+      db_type: 'postgresql',
+      connection_method: 'asyncpg',
+      port: 5432,
+      password: ''
+    })
+    setSelectedDbType('postgresql')
     setModalVisible(true)
   }
 
   const handleEdit = (record) => {
     setEditingConfig(record)
     form.setFieldsValue(record)
+    setSelectedDbType(record.db_type)
     setModalVisible(true)
   }
 
   const handleDbTypeChange = (value) => {
+    setSelectedDbType(value)
     const selectedType = dbTypes.find(t => t.value === value)
     if (selectedType) {
       form.setFieldsValue({ port: selectedType.default_port })
+    }
+    // Auto-select appropriate connection method
+    if (value === 'postgresql') {
+      form.setFieldsValue({ connection_method: 'asyncpg' })
+    } else if (value === 'opengauss' || value === 'gaussdb') {
+      form.setFieldsValue({ connection_method: 'psycopg2' })
     }
   }
 
@@ -101,22 +139,23 @@ function DatabaseConfig() {
         message.error(response.data.message)
       }
     } catch (error) {
-      message.error('测试连接失败')
+      message.error('测试连接失败: ' + (error.response?.data?.message || error.message))
     }
   }
 
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields()
-      // Ensure empty values are converted to empty strings
       const data = {
         name: values.name || '',
         db_type: values.db_type || 'postgresql',
+        connection_method: values.connection_method || 'psycopg2',
         host: values.host || '',
         port: values.port || 5432,
         database: values.database || '',
         username: values.username || '',
         password: values.password || '',
+        jdbc_driver_path: values.jdbc_driver_path || null,
       }
       if (editingConfig) {
         await databaseConfigApi.update(editingConfig.id, data)
@@ -133,6 +172,11 @@ function DatabaseConfig() {
     }
   }
 
+  // Filter connection methods based on selected db type
+  const filteredConnectionMethods = connectionMethods.filter(method =>
+    method.supported_db_types?.includes(selectedDbType)
+  )
+
   const columns = [
     { title: '名称', dataIndex: 'name', key: 'name' },
     {
@@ -142,6 +186,15 @@ function DatabaseConfig() {
       render: (type) => {
         const typeInfo = dbTypes.find(t => t.value === type) || { label: type }
         return <Tag color={DB_TYPE_COLORS[type] || 'default'}>{typeInfo.label}</Tag>
+      },
+    },
+    {
+      title: '连接方式',
+      dataIndex: 'connection_method',
+      key: 'connection_method',
+      render: (method) => {
+        const methodInfo = connectionMethods.find(m => m.value === method) || { label: method }
+        return <Tag color={CONNECTION_METHOD_COLORS[method] || 'default'}>{methodInfo.label}</Tag>
       },
     },
     { title: '主机', dataIndex: 'host', key: 'host' },
@@ -204,6 +257,7 @@ function DatabaseConfig() {
         open={modalVisible}
         onOk={handleSubmit}
         onCancel={() => setModalVisible(false)}
+        width={600}
       >
         <Form form={form} layout="vertical">
           <Form.Item
@@ -222,6 +276,27 @@ function DatabaseConfig() {
               {dbTypes.map(type => (
                 <Select.Option key={type.value} value={type.value}>
                   {type.label} (默认端口: {type.default_port})
+                </Select.Option>
+              ))}
+            </Select>
+          </Form.Item>
+          <Form.Item
+            name="connection_method"
+            label={
+              <span>
+                连接方式
+                <Tooltip title="选择数据库连接方式：asyncpg适用于PostgreSQL；psycopg2兼容性更好；gsql为命令行工具；JDBC需要配置驱动路径">
+                  <InfoCircleOutlined style={{ marginLeft: 8, color: '#999' }} />
+                </Tooltip>
+              </span>
+            }
+            rules={[{ required: true, message: '请选择连接方式' }]}
+          >
+            <Select>
+              {filteredConnectionMethods.map(method => (
+                <Select.Option key={method.value} value={method.value}>
+                  {method.label}
+                  {method.os_user && <span style={{ color: '#999', marginLeft: 8 }}>(OS用户: {method.os_user})</span>}
                 </Select.Option>
               ))}
             </Select>
@@ -252,13 +327,30 @@ function DatabaseConfig() {
             label="用户名"
             rules={[{ required: true, message: '请输入用户名' }]}
           >
-            <Input placeholder="例如: postgres" />
+            <Input placeholder="例如: postgres 或 gaussdb" />
           </Form.Item>
           <Form.Item
             name="password"
             label="密码"
           >
             <Input.Password placeholder="数据库密码（可为空）" />
+          </Form.Item>
+          <Form.Item
+            name="jdbc_driver_path"
+            label={
+              <span>
+                JDBC驱动路径
+                <Tooltip title="仅JDBC连接方式需要，指定JDBC驱动jar文件路径，如: drivers/gaussdbjdbc.jar">
+                  <InfoCircleOutlined style={{ marginLeft: 8, color: '#999' }} />
+                </Tooltip>
+              </span>
+            }
+            rules={[{
+              required: form.getFieldValue('connection_method') === 'jdbc',
+              message: 'JDBC连接方式必须配置驱动路径'
+            }]}
+          >
+            <Input placeholder="例如: drivers/gaussdbjdbc.jar 或 /path/to/driver.jar" disabled={form.getFieldValue('connection_method') !== 'jdbc'} />
           </Form.Item>
         </Form>
       </Modal>

@@ -6,32 +6,38 @@ from datetime import datetime
 class DatabaseConfigCreate(BaseModel):
     name: str
     db_type: str = "postgresql"  # postgresql, opengauss, gaussdb
+    connection_method: str = "psycopg2"  # asyncpg, psycopg2, gsql, jdbc
     host: str
     port: int
     database: str
     username: str
     password: str = ""  # Default empty string, allow empty password
+    jdbc_driver_path: Optional[str] = None  # Path to JDBC driver jar file
 
 
 class DatabaseConfigUpdate(BaseModel):
     name: Optional[str] = None
     db_type: Optional[str] = None
+    connection_method: Optional[str] = None
     host: Optional[str] = None
     port: Optional[int] = None
     database: Optional[str] = None
     username: Optional[str] = None
     password: Optional[str] = None
+    jdbc_driver_path: Optional[str] = None
 
 
 class DatabaseConfigResponse(BaseModel):
     id: int
     name: str
     db_type: str
+    connection_method: str
     host: str
     port: int
     database: str
     username: str
     password: str
+    jdbc_driver_path: Optional[str] = None
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
 

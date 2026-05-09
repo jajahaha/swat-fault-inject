@@ -18,11 +18,13 @@ class DatabaseConfig(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(100), nullable=False)
     db_type = Column(String(50), nullable=False, default="postgresql")
+    connection_method = Column(String(50), nullable=False, default="psycopg2")
     host = Column(String(255), nullable=False)
     port = Column(Integer, nullable=False)
     database = Column(String(100), nullable=False)
     username = Column(String(100), nullable=False)
     password = Column(Text, nullable=False)
+    jdbc_driver_path = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -31,11 +33,13 @@ class DatabaseConfig(Base):
             "id": self.id,
             "name": self.name,
             "db_type": self.db_type,
+            "connection_method": self.connection_method,
             "host": self.host,
             "port": self.port,
             "database": self.database,
             "username": self.username,
             "password": self.password,
+            "jdbc_driver_path": self.jdbc_driver_path,
             "created_at": self.created_at.isoformat() + "Z" if self.created_at else None,
             "updated_at": self.updated_at.isoformat() + "Z" if self.updated_at else None,
         }
@@ -101,6 +105,7 @@ async def init_db():
             default_db = DatabaseConfig(
                 name="本地测试数据库",
                 db_type="postgresql",
+                connection_method="asyncpg",
                 host="127.0.0.1",
                 port=5432,
                 database="postgres",
@@ -117,6 +122,7 @@ async def init_db():
             opengauss_db = DatabaseConfig(
                 name="openGauss示例",
                 db_type="opengauss",
+                connection_method="gsql",
                 host="localhost",
                 port=5433,
                 database="postgres",
@@ -133,11 +139,13 @@ async def init_db():
             gaussdb_db = DatabaseConfig(
                 name="GaussDB示例",
                 db_type="gaussdb",
+                connection_method="jdbc",
                 host="192.168.1.200",
                 port=8000,
                 database="postgres",
                 username="root",
                 password="",
+                jdbc_driver_path="drivers/gaussdbjdbc.jar",
             )
             session.add(gaussdb_db)
 

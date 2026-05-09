@@ -30,6 +30,6 @@ describe('App组件', () => {
     renderWithRouter(<App />)
 
     // 版本号应该在侧边栏底部显示
-    expect(screen.getByText(/v1\.4\.5/)).toBeInTheDocument()
+    expect(screen.getByText(/v1\.5\.0/)).toBeInTheDocument()
   })
 })

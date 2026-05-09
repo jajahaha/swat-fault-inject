@@ -2,6 +2,40 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.5.0] - 2026-05-09
+
+### Added
+
+- **支持多种数据库连接方式**
+  - asyncpg: Python异步驱动，适用于PostgreSQL
+  - psycopg2: Python同步驱动，兼容性更好，支持sha256认证
+  - gsql: 命令行工具，操作系统用户为service，适用于openGauss/GaussDB
+  - JDBC: Java驱动方式，需要配置JDBC驱动jar文件路径
+
+- **新增API接口**
+  - `GET /api/database-configs/connection-methods` 获取支持的连接方式列表
+
+- **新增数据库配置字段**
+  - `connection_method`: 连接方式选择
+  - `jdbc_driver_path`: JDBC驱动路径（仅JDBC方式需要）
+
+- **新增drivers目录**
+  - 用于存放JDBC驱动jar文件
+  - 支持GaussDB、openGauss、PostgreSQL JDBC驱动
+
+### Changed
+
+- **前端界面优化**
+  - 数据库配置表格新增"连接方式"列
+  - 新建/编辑表单新增连接方式选择和JDBC驱动路径配置
+  - 连接方式根据数据库类型自动过滤可选项
+
+### Technical
+
+- 故障注入服务支持四种连接方式
+- gsql方式使用subprocess管理子进程
+- JDBC方式使用jaydebeapi库（需额外安装）
+
 ## [1.4.5] - 2026-05-09
 
 ### Added
