@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.6] - 2026-05-09
+
+### Fixed
+
+- **修复 Python 3.7 pip 兼容性问题**
+  - asyncpg 0.22.0 使用简单 manylinux1_x86_64 标签（兼容旧版 pip）
+  - 之前 asyncpg 0.25.0 使用压缩 manylinux 标签，Python 3.7.9 pip 无法解析
+  - 保留 greenlet 1.1.3 简单标签格式
+
+### Changes
+
+- asyncpg Python 3.7 版本：0.25.0 → 0.22.0
+- Wheel 文件命名格式：单一 manylinux1_x86_64 标签
+
 ## [1.2.5] - 2026-05-09
 
 ### Added
