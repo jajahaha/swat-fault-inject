@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.2] - 2026-05-09
+
+### Fixed
+
+- **强制离线安装，移除在线回退**
+  - start.sh 在无 packages 目录或无 wheel 文件时直接退出
+  - 不尝试联网下载（避免在离线环境报网络错误）
+  - 添加调试信息：显示找到的 wheel 文件数量
+  - 移除 pip install 错误输出抑制，显示完整错误信息
+
+### Important
+
+- 此版本**仅支持离线安装**
+- 必须确保 `backend/packages/` 目录包含 23 个 wheel 文件
+- 如缺少依赖包，将直接失败而非尝试联网
+
 ## [1.2.1] - 2026-05-09
 
 ### Fixed

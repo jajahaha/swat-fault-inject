@@ -25,7 +25,7 @@ if [ -f "$DB_FILE" ]; then
 fi
 
 echo "=========================================="
-echo "  SWAT Fault Inject Platform v1.2.1"
+echo "  SWAT Fault Inject Platform v1.2.2"
 echo "  Starting services..."
 echo "=========================================="
 
@@ -109,25 +109,31 @@ source venv/bin/activate
 if [ ! -f "venv/.installed" ]; then
     echo -e "${YELLOW}Installing Python dependencies...${NC}"
     # First try offline install from local packages
-    if [ -d "packages" ] && [ "$(ls -A packages/*.whl 2>/dev/null)" ]; then
-        echo -e "${BLUE}Installing from local packages (offline)...${NC}"
-        # Install all wheel files directly - this works without network
-        pip install --no-index --no-deps packages/*.whl 2>/dev/null
-        if [ $? -ne 0 ]; then
-            echo -e "${YELLOW}Offline install failed, falling back to online install...${NC}"
-            pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple -q
-            if [ $? -ne 0 ]; then
-                echo -e "${RED}Failed to install Python dependencies!${NC}"
+    if [ -d "packages" ]; then
+        WHEEL_COUNT=$(ls packages/*.whl 2>/dev/null | wc -l)
+        echo -e "${BLUE}Found $WHEEL_COUNT wheel files in packages directory${NC}"
+        if [ "$WHEEL_COUNT" -gt 0 ]; then
+            echo -e "${BLUE}Installing from local packages (offline)...${NC}"
+            # Install all wheel files directly - this works without network
+            pip install --no-index --no-deps packages/*.whl
+            INSTALL_RESULT=$?
+            if [ $INSTALL_RESULT -eq 0 ]; then
+                echo -e "${GREEN}Offline installation successful!${NC}"
+            else
+                echo -e "${RED}Offline installation failed with error code: $INSTALL_RESULT${NC}"
+                echo -e "${YELLOW}Note: This machine has no network access, cannot fallback to online install${NC}"
+                echo -e "${RED}Please ensure packages directory contains valid wheel files${NC}"
                 exit 1
             fi
-        fi
-    else
-        echo -e "${BLUE}Downloading from PyPI mirror...${NC}"
-        pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple -q
-        if [ $? -ne 0 ]; then
-            echo -e "${RED}Failed to install Python dependencies!${NC}"
+        else
+            echo -e "${RED}No wheel files found in packages directory!${NC}"
+            echo -e "${YELLOW}Note: This machine has no network access, cannot install online${NC}"
             exit 1
         fi
+    else
+        echo -e "${RED}packages directory not found!${NC}"
+        echo -e "${YELLOW}Note: This machine has no network access, cannot install online${NC}"
+        exit 1
     fi
     touch venv/.installed
 fi
