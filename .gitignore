@@ -24,6 +24,12 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# Local Node.js installation (extracted at runtime)
+node-install/
+
+# Allow Node.js tar.gz for offline install
+!nodejs/*.tar.gz
+
 # Allow node_modules archive for offline install
 !frontend/node_modules.tar.gz
 

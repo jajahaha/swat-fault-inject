@@ -25,7 +25,7 @@ if [ -f "$DB_FILE" ]; then
 fi
 
 echo "=========================================="
-echo "  SWAT Fault Inject Platform v1.3.3"
+echo "  SWAT Fault Inject Platform v1.4.0"
 echo "  Starting services..."
 echo "=========================================="
 
@@ -57,26 +57,55 @@ fi
 
 echo -e "${GREEN}Python version: $PYTHON_VERSION (OK)${NC}"
 
-# Check Node.js version
+# Check Node.js version - try to install from local if not found
+NODEJS_DIR="$PROJECT_DIR/nodejs"
+NODE_INSTALL_DIR="$PROJECT_DIR/node-install"
+
 if ! command -v node &> /dev/null; then
-    echo -e "${RED}Error: Node.js is not installed!${NC}"
-    echo ""
-    echo "Node.js 18+ is required for the frontend."
-    echo ""
-    echo "Please install Node.js:"
-    echo "  - Ubuntu/Debian: sudo apt install nodejs npm"
-    echo "  - CentOS/RHEL: sudo yum install nodejs npm"
-    echo "  - macOS: brew install node"
-    echo ""
-    echo "For offline installation, download Node.js from:"
-    echo "  https://nodejs.org/dist/v18.20.2/node-v18.20.2-linux-arm64.tar.gz"
-    echo ""
-    echo "Install offline Node.js:"
-    echo "  tar -xzf node-v18.20.2-linux-arm64.tar.gz"
-    echo "  sudo cp -r node-v18.20.2-linux-arm64/* /usr/local/"
-    echo ""
-    echo "After installing Node.js, run ./start.sh again"
-    exit 1
+    echo -e "${YELLOW}Node.js is not installed in system${NC}"
+
+    # Check if local Node.js package exists
+    NODE_TARBALL=""
+    if [ "$MACHINE_ARCH" = "aarch64" ] || [ "$MACHINE_ARCH" = "arm64" ]; then
+        NODE_TARBALL="$NODEJS_DIR/node-v18.20.2-linux-arm64.tar.gz"
+    else
+        NODE_TARBALL="$NODEJS_DIR/node-v18.20.2-linux-x64.tar.gz"
+    fi
+
+    if [ -f "$NODE_TARBALL" ]; then
+        echo -e "${BLUE}Found local Node.js package: $(basename $NODE_TARBALL)${NC}"
+        echo -e "${YELLOW}Installing Node.js from local package...${NC}"
+
+        # Create installation directory
+        mkdir -p "$NODE_INSTALL_DIR"
+
+        # Extract Node.js
+        tar -xzf "$NODE_TARBALL" -C "$NODE_INSTALL_DIR" --strip-components=1
+
+        if [ $? -eq 0 ]; then
+            echo -e "${GREEN}Node.js installed successfully to $NODE_INSTALL_DIR${NC}"
+            # Add to PATH for this session
+            export PATH="$NODE_INSTALL_DIR/bin:$PATH"
+        else
+            echo -e "${RED}Failed to extract Node.js package!${NC}"
+            exit 1
+        fi
+    else
+        echo -e "${RED}Error: Node.js is not installed and no local package found!${NC}"
+        echo ""
+        echo "Node.js 18+ is required for the frontend."
+        echo ""
+        echo "For offline installation:"
+        echo "  1. Download Node.js for your architecture:"
+        if [ "$MACHINE_ARCH" = "aarch64" ] || [ "$MACHINE_ARCH" = "arm64" ]; then
+            echo "     https://nodejs.org/dist/v18.20.2/node-v18.20.2-linux-arm64.tar.gz"
+        else
+            echo "     https://nodejs.org/dist/v18.20.2/node-v18.20.2-linux-x64.tar.gz"
+        fi
+        echo "  2. Place the file in: $NODEJS_DIR/"
+        echo "  3. Run ./start.sh again"
+        exit 1
+    fi
 fi
 
 NODE_VERSION=$(node --version 2>&1 | sed 's/v//')

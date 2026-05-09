@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.0] - 2026-05-09
+
+### Added
+
+- **集成 Node.js 离线安装**
+  - 添加 Node.js v18.20.2 ARM64 (aarch64) 版本
+  - 添加 Node.js v18.20.2 x64 (x86_64) 版本
+  - 自动检测架构并选择正确的 Node.js 包
+  - 自动解压安装到项目目录的 node-install 子目录
+  - 无需系统安装 Node.js，完全离线部署
+
+### Changed
+
+- start.sh: Node.js 检测逻辑改为自动安装模式
+- .gitignore: 允许提交 nodejs/*.tar.gz，排除 node-install/
+
+### Requirements
+
+- 现支持完全离线安装：Python 依赖 + Node.js + npm
+- 总计约 130MB 离线包（Python wheels + Node.js + node_modules.tar.gz）
+
 ## [1.3.3] - 2026-05-09
 
 ### Fixed
