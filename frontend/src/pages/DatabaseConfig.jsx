@@ -65,7 +65,7 @@ function DatabaseConfig() {
   const handleCreate = () => {
     setEditingConfig(null)
     form.resetFields()
-    form.setFieldsValue({ db_type: 'postgresql', port: 5432 })
+    form.setFieldsValue({ db_type: 'postgresql', port: 5432, password: '' })
     setModalVisible(true)
   }
 
@@ -108,17 +108,28 @@ function DatabaseConfig() {
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields()
+      // Ensure empty values are converted to empty strings
+      const data = {
+        name: values.name || '',
+        db_type: values.db_type || 'postgresql',
+        host: values.host || '',
+        port: values.port || 5432,
+        database: values.database || '',
+        username: values.username || '',
+        password: values.password || '',
+      }
       if (editingConfig) {
-        await databaseConfigApi.update(editingConfig.id, values)
+        await databaseConfigApi.update(editingConfig.id, data)
         message.success('更新成功')
       } else {
-        await databaseConfigApi.create(values)
+        await databaseConfigApi.create(data)
         message.success('创建成功')
       }
       setModalVisible(false)
       loadConfigs()
     } catch (error) {
-      message.error('操作失败')
+      console.error('提交失败:', error)
+      message.error('操作失败: ' + (error.response?.data?.detail || error.message))
     }
   }
 

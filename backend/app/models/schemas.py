@@ -10,7 +10,7 @@ class DatabaseConfigCreate(BaseModel):
     port: int
     database: str
     username: str
-    password: str
+    password: str = ""  # Default empty string, allow empty password
 
 
 class DatabaseConfigUpdate(BaseModel):

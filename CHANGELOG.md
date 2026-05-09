@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.3] - 2026-05-09
+
+### Fixed
+
+- **修复新建数据库配置时空密码导致的500错误**
+  - `DatabaseConfigCreate` schema 中 `password` 字段添加默认空字符串
+  - 前端提交时确保空值转换为空字符串（避免 undefined）
+  - 前端新建表单初始化时设置 `password: ''`
+  - 前端错误提示显示具体错误详情
+
+### Problem
+
+- 前端表单密码字段为空时，发送 `undefined` 到后端
+- Pydantic schema 中 `password: str` 是必填字段，不接受 undefined/null
+- 导致 500 Internal Server Error
+
+### Solution
+
+- 后端: `password: str = ""` 添加默认值
+- 前端: 表单初始化和提交时处理空值
+
 ## [1.4.2] - 2026-05-09
 
 ### Added
