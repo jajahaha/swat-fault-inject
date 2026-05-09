@@ -25,7 +25,7 @@ if [ -f "$DB_FILE" ]; then
 fi
 
 echo "=========================================="
-echo "  SWAT Fault Inject Platform v1.2.7"
+echo "  SWAT Fault Inject Platform v1.2.8"
 echo "  Starting services..."
 echo "=========================================="
 
@@ -37,6 +37,10 @@ PYTHON_MINOR=$(echo $PYTHON_VERSION | cut -d. -f2)
 # Determine wheel compatibility tag based on exact Python version
 # cp37 for Python 3.7, cp38 for Python 3.8, ... cp312 for Python 3.12
 WHEEL_TAG="cp3${PYTHON_MINOR}"
+
+# Detect machine architecture for binary wheels
+MACHINE_ARCH=$(python3 -c "import platform; print(platform.machine())")
+echo -e "${BLUE}Machine architecture: $MACHINE_ARCH${NC}"
 echo -e "${BLUE}Python wheel compatibility tag: $WHEEL_TAG${NC}"
 
 if [ "$PYTHON_MAJOR" -lt 3 ] || ([ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -lt 7 ]); then
@@ -121,9 +125,12 @@ if [ ! -f "venv/.installed" ]; then
             echo -e "${BLUE}Installing from local packages (offline)...${NC}"
 
             # Step 1: Upgrade pip first (required for manylinux2014+ wheel support)
+            # Do this separately before other packages
             if [ -f "packages/pip-*.whl" ]; then
                 echo -e "${YELLOW}Upgrading pip for better wheel compatibility...${NC}"
-                pip install --no-index --no-deps packages/pip-*.whl
+                pip_wheel=$(ls packages/pip-*.whl | head -1)
+                pip install --no-deps "$pip_wheel" 2>/dev/null || python -m pip install --no-deps "$pip_wheel"
+                echo -e "${GREEN}pip upgraded successfully${NC}"
             fi
 
             # Filter wheel files by Python version compatibility
@@ -144,11 +151,36 @@ if [ ! -f "venv/.installed" ]; then
 
             # Copy version-specific binary wheels (exact version match)
             # e.g., Python 3.7 -> cp37, Python 3.12 -> cp312
+            # Special handling for asyncpg which has multiple architecture variants
             for wheel in packages/*${WHEEL_TAG}*.whl; do
                 if [ -f "$wheel" ]; then
+                    # Skip asyncpg wheels - handle them separately
+                    if [[ "$wheel" == *"asyncpg"* ]]; then
+                        continue
+                    fi
                     cp "$wheel" "$COMPAT_WHEELS_DIR/"
                 fi
             done
+
+            # Handle asyncpg with architecture detection
+            # asyncpg has i686 (32-bit) and x86_64 (64-bit) variants
+            if [ "$MACHINE_ARCH" = "i686" ] || [ "$MACHINE_ARCH" = "i386" ] || [ "$MACHINE_ARCH" = "x86" ]; then
+                # 32-bit system
+                asyncpg_wheel=$(ls packages/asyncpg*${WHEEL_TAG}*i686*.whl 2>/dev/null | head -1)
+                if [ -z "$asyncpg_wheel" ]; then
+                    asyncpg_wheel=$(ls packages/asyncpg*${WHEEL_TAG}*i386*.whl 2>/dev/null | head -1)
+                fi
+            else
+                # 64-bit system (x86_64, AMD64, etc.)
+                asyncpg_wheel=$(ls packages/asyncpg*${WHEEL_TAG}*x86_64*.whl 2>/dev/null | head -1)
+            fi
+
+            if [ -n "$asyncpg_wheel" ] && [ -f "$asyncpg_wheel" ]; then
+                echo -e "${BLUE}Selected asyncpg wheel: $(basename $asyncpg_wheel)${NC}"
+                cp "$asyncpg_wheel" "$COMPAT_WHEELS_DIR/"
+            else
+                echo -e "${YELLOW}Warning: No matching asyncpg wheel found for architecture $MACHINE_ARCH${NC}"
+            fi
 
             COMPAT_COUNT=$(ls "$COMPAT_WHEELS_DIR"/*.whl 2>/dev/null | wc -l)
             echo -e "${BLUE}Selected $COMPAT_COUNT compatible wheel files for Python $PYTHON_VERSION${NC}"

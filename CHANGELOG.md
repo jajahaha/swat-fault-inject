@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.8] - 2026-05-09
+
+### Fixed
+
+- **修复 Python 3.7 架构兼容性问题**
+  - asyncpg 降级到 0.21.0（提供 32 位和 64 位 wheel）
+  - 添加 asyncpg 32 位 wheel (i686)
+  - 自动检测机器架构并选择正确的 asyncpg wheel
+  - pip 降级到 19.3.1（更好支持旧版 manylinux 标签）
+
+### Added
+
+- **架构自动检测**
+  - 检测 32 位 (i686/i386/x86) 和 64 位 (x86_64/AMD64) 系统
+  - 自动选择匹配架构的 asyncpg wheel
+
+### Changes
+
+- asyncpg Python 3.7 版本：0.22.0 → 0.21.0
+- pip：21.3.1 → 19.3.1
+- 添加 setuptools 59.8.0 和 wheel 0.37.1（备用构建工具）
+- Wheel 文件总数：40 个
+
 ## [1.2.7] - 2026-05-09
 
 ### Fixed
