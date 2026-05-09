@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.9] - 2026-05-09
+
+### Added
+
+- **支持 ARM64/aarch64 架构离线安装**
+  - asyncpg aarch64 wheels (Python 3.7-3.12)
+  - greenlet aarch64 wheels (Python 3.7-3.12)
+  - SQLAlchemy aarch64 wheels (Python 3.7-3.12)
+  - 自动检测机器架构：x86_64, aarch64, i686
+
+### Fixed
+
+- **修复架构检测逻辑**
+  - 新增 aarch64 (ARM64) 架构支持
+  - 分别处理 asyncpg, greenlet, SQLAlchemy 的架构选择
+  - 支持的架构：x86_64 (Intel/AMD), aarch64 (ARM/Apple Silicon), i686 (32-bit)
+
+### Changes
+
+- Wheel 文件总数：59 个（x86_64 + aarch64 + i686）
+- 架构后缀映射：aarch64/arm64 → aarch64, i686/i386/x86 → i686, 其他 → x86_64
+
 ## [1.2.8] - 2026-05-09
 
 ### Fixed

@@ -25,7 +25,7 @@ if [ -f "$DB_FILE" ]; then
 fi
 
 echo "=========================================="
-echo "  SWAT Fault Inject Platform v1.2.8"
+echo "  SWAT Fault Inject Platform v1.2.9"
 echo "  Starting services..."
 echo "=========================================="
 
@@ -151,35 +151,57 @@ if [ ! -f "venv/.installed" ]; then
 
             # Copy version-specific binary wheels (exact version match)
             # e.g., Python 3.7 -> cp37, Python 3.12 -> cp312
-            # Special handling for asyncpg which has multiple architecture variants
+            # Special handling for architecture-specific wheels: asyncpg, greenlet, SQLAlchemy
             for wheel in packages/*${WHEEL_TAG}*.whl; do
                 if [ -f "$wheel" ]; then
-                    # Skip asyncpg wheels - handle them separately
-                    if [[ "$wheel" == *"asyncpg"* ]]; then
+                    # Skip architecture-specific wheels - handle them separately
+                    if [[ "$wheel" == *"asyncpg"* ]] || [[ "$wheel" == *"greenlet"* ]] || [[ "$wheel" == *"SQLAlchemy"* ]]; then
                         continue
                     fi
                     cp "$wheel" "$COMPAT_WHEELS_DIR/"
                 fi
             done
 
-            # Handle asyncpg with architecture detection
-            # asyncpg has i686 (32-bit) and x86_64 (64-bit) variants
-            if [ "$MACHINE_ARCH" = "i686" ] || [ "$MACHINE_ARCH" = "i386" ] || [ "$MACHINE_ARCH" = "x86" ]; then
-                # 32-bit system
-                asyncpg_wheel=$(ls packages/asyncpg*${WHEEL_TAG}*i686*.whl 2>/dev/null | head -1)
-                if [ -z "$asyncpg_wheel" ]; then
-                    asyncpg_wheel=$(ls packages/asyncpg*${WHEEL_TAG}*i386*.whl 2>/dev/null | head -1)
-                fi
+            # Handle architecture-specific wheels with architecture detection
+            # Supported architectures: x86_64 (Intel/AMD), aarch64 (ARM64), i686 (32-bit Intel)
+            ARCH_SUFFIX=""
+            if [ "$MACHINE_ARCH" = "aarch64" ] || [ "$MACHINE_ARCH" = "arm64" ]; then
+                # ARM64 (Apple Silicon, ARM Linux)
+                ARCH_SUFFIX="aarch64"
+            elif [ "$MACHINE_ARCH" = "i686" ] || [ "$MACHINE_ARCH" = "i386" ] || [ "$MACHINE_ARCH" = "x86" ]; then
+                # 32-bit Intel
+                ARCH_SUFFIX="i686"
             else
-                # 64-bit system (x86_64, AMD64, etc.)
-                asyncpg_wheel=$(ls packages/asyncpg*${WHEEL_TAG}*x86_64*.whl 2>/dev/null | head -1)
+                # Default: 64-bit Intel/AMD (x86_64, AMD64)
+                ARCH_SUFFIX="x86_64"
             fi
+            echo -e "${BLUE}Using architecture suffix: $ARCH_SUFFIX${NC}"
 
+            # Select asyncpg wheel for detected architecture
+            asyncpg_wheel=$(ls packages/asyncpg*${WHEEL_TAG}*${ARCH_SUFFIX}*.whl 2>/dev/null | head -1)
             if [ -n "$asyncpg_wheel" ] && [ -f "$asyncpg_wheel" ]; then
                 echo -e "${BLUE}Selected asyncpg wheel: $(basename $asyncpg_wheel)${NC}"
                 cp "$asyncpg_wheel" "$COMPAT_WHEELS_DIR/"
             else
-                echo -e "${YELLOW}Warning: No matching asyncpg wheel found for architecture $MACHINE_ARCH${NC}"
+                echo -e "${YELLOW}Warning: No matching asyncpg wheel found for $ARCH_SUFFIX${NC}"
+            fi
+
+            # Select greenlet wheel for detected architecture
+            greenlet_wheel=$(ls packages/greenlet*${WHEEL_TAG}*${ARCH_SUFFIX}*.whl 2>/dev/null | head -1)
+            if [ -n "$greenlet_wheel" ] && [ -f "$greenlet_wheel" ]; then
+                echo -e "${BLUE}Selected greenlet wheel: $(basename $greenlet_wheel)${NC}"
+                cp "$greenlet_wheel" "$COMPAT_WHEELS_DIR/"
+            else
+                echo -e "${YELLOW}Warning: No matching greenlet wheel found for $ARCH_SUFFIX${NC}"
+            fi
+
+            # Select SQLAlchemy wheel for detected architecture
+            sqlalchemy_wheel=$(ls packages/SQLAlchemy*${WHEEL_TAG}*${ARCH_SUFFIX}*.whl 2>/dev/null | head -1)
+            if [ -n "$sqlalchemy_wheel" ] && [ -f "$sqlalchemy_wheel" ]; then
+                echo -e "${BLUE}Selected SQLAlchemy wheel: $(basename $sqlalchemy_wheel)${NC}"
+                cp "$sqlalchemy_wheel" "$COMPAT_WHEELS_DIR/"
+            else
+                echo -e "${YELLOW}Warning: No matching SQLAlchemy wheel found for $ARCH_SUFFIX${NC}"
             fi
 
             COMPAT_COUNT=$(ls "$COMPAT_WHEELS_DIR"/*.whl 2>/dev/null | wc -l)
