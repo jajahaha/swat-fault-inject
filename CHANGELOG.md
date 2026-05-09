@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.5] - 2026-05-09
+
+### Added
+
+- **添加 psycopg2 驱动支持 GaussDB sha256 认证**
+  - GaussDB/openGauss 优先使用 psycopg2 连接（更好兼容 sha256 认证）
+  - PostgreSQL 继续使用 asyncpg 异步驱动
+  - 故障注入服务支持两种驱动模式
+
+### Fixed
+
+- **修复 Vite 代理 IPv6 连接问题**
+  - 代理目标从 `localhost` 改为 `127.0.0.1`，强制使用 IPv4
+
+### Technical
+
+- 添加 `psycopg2-binary==2.9.9` 到依赖
+- 使用 `asyncio.to_thread` 包装同步 psycopg2 调用
+- 故障注入使用 threading 支持 psycopg2 并发连接
+
 ## [1.4.4] - 2026-05-09
 
 ### Fixed

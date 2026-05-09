@@ -4,7 +4,7 @@
 
 ## 版本
 
-**v1.4.4** - 2026-05-09（修复 Vite 代理 IPv6 连接问题，优化 GaussDB/openGauss 认证）
+**v1.4.5** - 2026-05-09（添加 psycopg2 支持 GaussDB sha256 认证）
 
 ## 环境要求
 

@@ -3,6 +3,7 @@ from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 from typing import List
+import asyncio
 
 from app.database import async_session, DatabaseConfig
 from app.models.schemas import (
@@ -12,6 +13,7 @@ from app.models.schemas import (
     ConnectionTestResponse,
 )
 import asyncpg
+import psycopg2
 
 router = APIRouter(prefix="/api/database-configs", tags=["database-configs"])
 
@@ -111,9 +113,10 @@ async def test_database_connection(config_id: int):
             raise HTTPException(status_code=404, detail="Database config not found")
 
     # PostgreSQL, openGauss, GaussDB all use PostgreSQL protocol
-    # Note: GaussDB/openGauss may have different SASL authentication requirements
-    try:
-        # Build connection parameters based on database type
+    # Note: GaussDB/openGauss may use non-standard SASL authentication
+    # Try asyncpg first, fallback to psycopg2 for better GaussDB sha256 compatibility
+
+    async def try_asyncpg():
         connect_params = {
             "host": db_config.host,
             "port": db_config.port,
@@ -122,14 +125,49 @@ async def test_database_connection(config_id: int):
             "password": db_config.password,
             "timeout": 10,
         }
-
-        # For GaussDB and openGauss, SSL might be required and helps with authentication
         if db_config.db_type in ("gaussdb", "opengauss"):
-            connect_params["ssl"] = "prefer"  # Try SSL, fallback to non-SSL
+            connect_params["ssl"] = "prefer"
 
         conn = await asyncpg.connect(**connect_params)
         version = await conn.fetchval("SELECT version()")
         await conn.close()
+        return version
+
+    def try_psycopg2():
+        conn = psycopg2.connect(
+            host=db_config.host,
+            port=db_config.port,
+            database=db_config.database,
+            user=db_config.username,
+            password=db_config.password,
+            connect_timeout=10,
+        )
+        cursor = conn.cursor()
+        cursor.execute("SELECT version()")
+        version = cursor.fetchone()[0]
+        cursor.close()
+        conn.close()
+        return version
+
+    # For GaussDB/openGauss, prefer psycopg2 for better sha256 compatibility
+    if db_config.db_type in ("gaussdb", "opengauss"):
+        try:
+            # Run psycopg2 in thread pool since it's synchronous
+            version = await asyncio.to_thread(try_psycopg2)
+            return ConnectionTestResponse(
+                success=True,
+                message=f"{db_config.db_type} 连接成功 (psycopg2)",
+                server_version=version,
+            )
+        except Exception as e:
+            return ConnectionTestResponse(
+                success=False,
+                message=f"连接失败: {str(e)}",
+            )
+
+    # For PostgreSQL, use asyncpg
+    try:
+        version = await try_asyncpg()
         return ConnectionTestResponse(
             success=True,
             message=f"{db_config.db_type} 连接成功",
@@ -137,9 +175,20 @@ async def test_database_connection(config_id: int):
         )
     except Exception as e:
         error_msg = str(e)
-        # Provide more helpful error messages for common issues
         if "SASL" in error_msg:
-            error_msg = f"SASL认证不支持，请检查数据库是否配置了标准认证方式(md5/scram-sha-256)。详情: {error_msg}"
+            # Fallback to psycopg2 for SASL issues
+            try:
+                version = await asyncio.to_thread(try_psycopg2)
+                return ConnectionTestResponse(
+                    success=True,
+                    message=f"{db_config.db_type} 连接成功 (psycopg2 fallback)",
+                    server_version=version,
+                )
+            except Exception as e2:
+                return ConnectionTestResponse(
+                    success=False,
+                    message=f"连接失败: {str(e2)}",
+                )
         return ConnectionTestResponse(
             success=False,
             message=f"连接失败: {error_msg}",
