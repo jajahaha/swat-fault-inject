@@ -25,7 +25,7 @@ if [ -f "$DB_FILE" ]; then
 fi
 
 echo "=========================================="
-echo "  SWAT Fault Inject Platform v1.2.0"
+echo "  SWAT Fault Inject Platform v1.2.1"
 echo "  Starting services..."
 echo "=========================================="
 
@@ -109,9 +109,10 @@ source venv/bin/activate
 if [ ! -f "venv/.installed" ]; then
     echo -e "${YELLOW}Installing Python dependencies...${NC}"
     # First try offline install from local packages
-    if [ -d "packages" ] && [ "$(ls -A packages 2>/dev/null)" ]; then
-        echo -e "${BLUE}Trying offline install from local packages...${NC}"
-        pip install --no-index --find-links=packages -r requirements.txt -q 2>/dev/null
+    if [ -d "packages" ] && [ "$(ls -A packages/*.whl 2>/dev/null)" ]; then
+        echo -e "${BLUE}Installing from local packages (offline)...${NC}"
+        # Install all wheel files directly - this works without network
+        pip install --no-index --no-deps packages/*.whl 2>/dev/null
         if [ $? -ne 0 ]; then
             echo -e "${YELLOW}Offline install failed, falling back to online install...${NC}"
             pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple -q

@@ -21,7 +21,7 @@ class TestRootEndpoint:
         assert response.status_code == 200
         data = response.json()
         assert data["message"] == "SWAT Fault Inject Platform API"
-        assert data["version"] == "1.2.0"
+        assert data["version"] == "1.2.1"
 
 
 class TestDatabaseConfigAPI:

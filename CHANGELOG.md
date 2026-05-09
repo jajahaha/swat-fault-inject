@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.1] - 2026-05-09
+
+### Fixed
+
+- **修复完全离线安装问题**
+  - 修改 start.sh 离线安装逻辑：直接安装所有 wheel 文件
+  - 使用 `pip install --no-index --no-deps packages/*.whl` 替代 `pip install -r requirements.txt`
+  - 重新下载完整的 Python 3.7 兼容依赖包（23个 wheel 文件）
+  - 包含所有二进制依赖：SQLAlchemy、asyncpg、greenlet（Python 3.7 版本）
+
+### Pre-packaged Dependencies (23 packages)
+
+- fastapi==0.99.1 (py3-none-any)
+- uvicorn==0.22.0 (py3-none-any)
+- starlette==0.27.0 (py3-none-any)
+- sqlalchemy==2.0.23 (cp37-cp37m)
+- asyncpg==0.28.0 (cp37-cp37m)
+- pydantic==1.10.13 (py3-none-any)
+- greenlet==1.1.3 (cp37-cp37m)
+- pytest==7.4.0 (py3-none-any)
+- httpx==0.24.1 (py3-none-any)
+- 以及所有间接依赖包
+
 ## [1.2.0] - 2026-05-09
 
 ### Changed
