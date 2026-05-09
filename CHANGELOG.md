@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.3] - 2026-05-09
+
+### Fixed
+
+- **修复 Node.js 检测逻辑**
+  - 使用 `command -v` 正确检测命令是否存在
+  - 之前的 `$?` 检测的是 `sed` 的返回值而非 `node`
+  - 修复当 Node.js 未安装时显示 "(OK)" 的错误
+
 ## [1.3.2] - 2026-05-09
 
 ### Added

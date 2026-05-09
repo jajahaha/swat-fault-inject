@@ -25,7 +25,7 @@ if [ -f "$DB_FILE" ]; then
 fi
 
 echo "=========================================="
-echo "  SWAT Fault Inject Platform v1.3.2"
+echo "  SWAT Fault Inject Platform v1.3.3"
 echo "  Starting services..."
 echo "=========================================="
 
@@ -58,8 +58,7 @@ fi
 echo -e "${GREEN}Python version: $PYTHON_VERSION (OK)${NC}"
 
 # Check Node.js version
-NODE_VERSION=$(node --version 2>&1 | sed 's/v//')
-if [ $? -ne 0 ]; then
+if ! command -v node &> /dev/null; then
     echo -e "${RED}Error: Node.js is not installed!${NC}"
     echo ""
     echo "Node.js 18+ is required for the frontend."
@@ -80,7 +79,8 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-NODE_MAJOR=$(echo $NODE_VERSION | cut -d. -f1)
+NODE_VERSION=$(node --version 2>&1 | sed 's/v//')
+NODE_MAJOR=$(echo "$NODE_VERSION" | cut -d. -f1)
 if [ "$NODE_MAJOR" -lt 18 ]; then
     echo -e "${YELLOW}Warning: Node.js $NODE_VERSION detected, but version 18+ is recommended${NC}"
 else
@@ -88,12 +88,12 @@ else
 fi
 
 # Check npm
-NPM_VERSION=$(npm --version 2>&1)
-if [ $? -ne 0 ]; then
+if ! command -v npm &> /dev/null; then
     echo -e "${RED}Error: npm is not installed!${NC}"
     echo "Please install npm together with Node.js"
     exit 1
 fi
+NPM_VERSION=$(npm --version 2>&1)
 echo -e "${GREEN}npm version: $NPM_VERSION (OK)${NC}"
 
 # Function to check if port is in use
