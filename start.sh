@@ -25,7 +25,7 @@ if [ -f "$DB_FILE" ]; then
 fi
 
 echo "=========================================="
-echo "  SWAT Fault Inject Platform v1.1.9"
+echo "  SWAT Fault Inject Platform v1.2.0"
 echo "  Starting services..."
 echo "=========================================="
 
@@ -39,9 +39,9 @@ if [ "$PYTHON_MAJOR" -lt 3 ] || ([ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" 
     echo -e "${RED}Current version: Python $PYTHON_VERSION${NC}"
     echo ""
     echo "Please install Python 3.7 or higher:"
-    echo "  - Ubuntu/Debian: sudo apt install python3.8"
-    echo "  - CentOS/RHEL: sudo yum install python38"
-    echo "  - macOS: brew install python@3.8"
+    echo "  - Ubuntu/Debian: sudo apt install python3.7"
+    echo "  - CentOS/RHEL: sudo yum install python37"
+    echo "  - macOS: brew install python@3.7"
     echo "  - Windows: Download from https://python.org"
     exit 1
 fi

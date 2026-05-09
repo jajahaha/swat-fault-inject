@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.0] - 2026-05-09
+
+### Changed
+
+- **完全离线安装支持 Python 3.7**
+  - 预打包 23 个依赖包（20个纯Python包 + 3个Python 3.7二进制包）
+  - 固定依赖版本号确保兼容性
+  - 移除 uvicorn[standard]，使用基本 uvicorn 减少依赖
+  - Python 3.7 用户可直接从本地包离线安装
+
+### Dependencies (Fixed Versions)
+
+- fastapi==0.99.1
+- uvicorn==0.22.0
+- starlette==0.27.0
+- sqlalchemy==2.0.23
+- asyncpg==0.28.0
+- pydantic==1.10.13
+- pytest==7.4.0
+- httpx==0.24.1
+
 ## [1.1.9] - 2026-05-09
 
 ### Changed
