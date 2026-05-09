@@ -25,7 +25,7 @@ if [ -f "$DB_FILE" ]; then
 fi
 
 echo "=========================================="
-echo "  SWAT Fault Inject Platform v1.2.4"
+echo "  SWAT Fault Inject Platform v1.2.5"
 echo "  Starting services..."
 echo "=========================================="
 
@@ -33,6 +33,11 @@ echo "=========================================="
 PYTHON_VERSION=$(python3 --version 2>&1 | awk '{print $2}')
 PYTHON_MAJOR=$(echo $PYTHON_VERSION | cut -d. -f1)
 PYTHON_MINOR=$(echo $PYTHON_VERSION | cut -d. -f2)
+
+# Determine wheel compatibility tag based on exact Python version
+# cp37 for Python 3.7, cp38 for Python 3.8, ... cp312 for Python 3.12
+WHEEL_TAG="cp3${PYTHON_MINOR}"
+echo -e "${BLUE}Python wheel compatibility tag: $WHEEL_TAG${NC}"
 
 if [ "$PYTHON_MAJOR" -lt 3 ] || ([ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -lt 7 ]); then
     echo -e "${RED}Error: Python 3.7+ is required!${NC}"
@@ -114,15 +119,53 @@ if [ ! -f "venv/.installed" ]; then
         echo -e "${BLUE}Found $WHEEL_COUNT wheel files in packages directory${NC}"
         if [ "$WHEEL_COUNT" -gt 0 ]; then
             echo -e "${BLUE}Installing from local packages (offline)...${NC}"
-            # Install all wheel files directly - this works without network
-            pip install --no-index --no-deps packages/*.whl
-            INSTALL_RESULT=$?
-            if [ $INSTALL_RESULT -eq 0 ]; then
-                echo -e "${GREEN}Offline installation successful!${NC}"
+
+            # Filter wheel files by Python version compatibility
+            # - py3-none-any wheels work on all Python 3 versions
+            # - cp37 wheels work on Python 3.7
+            # - cp312 wheels work on Python 3.12+
+
+            # Create a temporary directory for compatible wheels
+            COMPAT_WHEELS_DIR=$(mktemp -d)
+
+            # Copy pure Python wheels (py3-none-any)
+            for wheel in packages/*-py3-none-any.whl; do
+                if [ -f "$wheel" ]; then
+                    cp "$wheel" "$COMPAT_WHEELS_DIR/"
+                fi
+            done
+
+            # Copy version-specific binary wheels (exact version match)
+            # e.g., Python 3.7 -> cp37, Python 3.12 -> cp312
+            for wheel in packages/*${WHEEL_TAG}*.whl; do
+                if [ -f "$wheel" ]; then
+                    cp "$wheel" "$COMPAT_WHEELS_DIR/"
+                fi
+            done
+
+            COMPAT_COUNT=$(ls "$COMPAT_WHEELS_DIR"/*.whl 2>/dev/null | wc -l)
+            echo -e "${BLUE}Selected $COMPAT_COUNT compatible wheel files for Python $PYTHON_VERSION${NC}"
+
+            if [ "$COMPAT_COUNT" -gt 0 ]; then
+                # Install all compatible wheel files directly - this works without network
+                pip install --no-index --no-deps "$COMPAT_WHEELS_DIR"/*.whl
+                INSTALL_RESULT=$?
+
+                # Cleanup temp directory
+                rm -rf "$COMPAT_WHEELS_DIR"
+
+                if [ $INSTALL_RESULT -eq 0 ]; then
+                    echo -e "${GREEN}Offline installation successful!${NC}"
+                else
+                    echo -e "${RED}Offline installation failed with error code: $INSTALL_RESULT${NC}"
+                    echo -e "${YELLOW}Note: This machine has no network access, cannot fallback to online install${NC}"
+                    echo -e "${RED}Please ensure packages directory contains valid wheel files for Python $PYTHON_VERSION${NC}"
+                    exit 1
+                fi
             else
-                echo -e "${RED}Offline installation failed with error code: $INSTALL_RESULT${NC}"
-                echo -e "${YELLOW}Note: This machine has no network access, cannot fallback to online install${NC}"
-                echo -e "${RED}Please ensure packages directory contains valid wheel files${NC}"
+                rm -rf "$COMPAT_WHEELS_DIR"
+                echo -e "${RED}No compatible wheel files found for Python $PYTHON_VERSION!${NC}"
+                echo -e "${YELLOW}Need either py3-none-any or $WHEEL_TAG wheel files${NC}"
                 exit 1
             fi
         else

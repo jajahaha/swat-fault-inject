@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.5] - 2026-05-09
+
+### Added
+
+- **支持 Python 3.7-3.12 全版本离线安装**
+  - asyncpg: 添加 cp38, cp39, cp310, cp311 版本 wheel (0.29.0)
+  - greenlet: 添加 cp38, cp39, cp310, cp311 版本 wheel (3.0.3)
+  - 总共 33 个 wheel 文件（21个纯Python + 12个二进制包）
+
+### Fixed
+
+- **修复 wheel 文件选择逻辑**
+  - 根据精确 Python 版本匹配 wheel（cp37, cp38, ..., cp312）
+  - 之前逻辑：Python 3.8-3.11 错误地尝试使用 cp37 wheel
+  - 现在逻辑：精确匹配当前 Python 版本的 wheel 标签
+
+### Changes
+
+- start.sh 智能选择兼容 wheel 文件
+- Wheel 标签计算：`cp3${PYTHON_MINOR}`（如 Python 3.12 → cp312）
+
 ## [1.2.4] - 2026-05-09
 
 ### Fixed
