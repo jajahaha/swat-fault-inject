@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # SWAT Fault Inject Platform - Start Script
-# Version: 1.1.9
+# Version: 1.5.0
 
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BACKEND_DIR="$PROJECT_DIR/backend"
@@ -25,7 +25,7 @@ if [ -f "$DB_FILE" ]; then
 fi
 
 echo "=========================================="
-echo "  SWAT Fault Inject Platform v1.4.3"
+echo "  SWAT Fault Inject Platform v1.5.0"
 echo "  Starting services..."
 echo "=========================================="
 
@@ -219,11 +219,11 @@ if [ ! -f "venv/.installed" ]; then
 
             # Copy version-specific binary wheels (exact version match)
             # e.g., Python 3.7 -> cp37, Python 3.12 -> cp312
-            # Special handling for architecture-specific wheels: asyncpg, greenlet, SQLAlchemy
+            # Special handling for architecture-specific wheels - handle them separately
             for wheel in packages/*${WHEEL_TAG}*.whl; do
                 if [ -f "$wheel" ]; then
                     # Skip architecture-specific wheels - handle them separately
-                    if [[ "$wheel" == *"asyncpg"* ]] || [[ "$wheel" == *"greenlet"* ]] || [[ "$wheel" == *"SQLAlchemy"* ]]; then
+                    if [[ "$wheel" == *"asyncpg"* ]] || [[ "$wheel" == *"greenlet"* ]] || [[ "$wheel" == *"SQLAlchemy"* ]] || [[ "$wheel" == *"psycopg2"* ]] || [[ "$wheel" == *"JPype"* ]] || [[ "$wheel" == *"jpype"* ]]; then
                         continue
                     fi
                     cp "$wheel" "$COMPAT_WHEELS_DIR/"
@@ -245,32 +245,18 @@ if [ ! -f "venv/.installed" ]; then
             fi
             echo -e "${BLUE}Using architecture suffix: $ARCH_SUFFIX${NC}"
 
-            # Select asyncpg wheel for detected architecture
-            asyncpg_wheel=$(ls packages/asyncpg*${WHEEL_TAG}*${ARCH_SUFFIX}*.whl 2>/dev/null | head -1)
-            if [ -n "$asyncpg_wheel" ] && [ -f "$asyncpg_wheel" ]; then
-                echo -e "${BLUE}Selected asyncpg wheel: $(basename $asyncpg_wheel)${NC}"
-                cp "$asyncpg_wheel" "$COMPAT_WHEELS_DIR/"
-            else
-                echo -e "${YELLOW}Warning: No matching asyncpg wheel found for $ARCH_SUFFIX${NC}"
-            fi
+            # Architecture-specific packages that need special handling
+            ARCH_PACKAGES="asyncpg greenlet SQLAlchemy psycopg2_binary JPype1 jpype1"
 
-            # Select greenlet wheel for detected architecture
-            greenlet_wheel=$(ls packages/greenlet*${WHEEL_TAG}*${ARCH_SUFFIX}*.whl 2>/dev/null | head -1)
-            if [ -n "$greenlet_wheel" ] && [ -f "$greenlet_wheel" ]; then
-                echo -e "${BLUE}Selected greenlet wheel: $(basename $greenlet_wheel)${NC}"
-                cp "$greenlet_wheel" "$COMPAT_WHEELS_DIR/"
-            else
-                echo -e "${YELLOW}Warning: No matching greenlet wheel found for $ARCH_SUFFIX${NC}"
-            fi
-
-            # Select SQLAlchemy wheel for detected architecture
-            sqlalchemy_wheel=$(ls packages/SQLAlchemy*${WHEEL_TAG}*${ARCH_SUFFIX}*.whl 2>/dev/null | head -1)
-            if [ -n "$sqlalchemy_wheel" ] && [ -f "$sqlalchemy_wheel" ]; then
-                echo -e "${BLUE}Selected SQLAlchemy wheel: $(basename $sqlalchemy_wheel)${NC}"
-                cp "$sqlalchemy_wheel" "$COMPAT_WHEELS_DIR/"
-            else
-                echo -e "${YELLOW}Warning: No matching SQLAlchemy wheel found for $ARCH_SUFFIX${NC}"
-            fi
+            for pkg in $ARCH_PACKAGES; do
+                pkg_wheel=$(ls packages/${pkg}*${WHEEL_TAG}*${ARCH_SUFFIX}*.whl 2>/dev/null | head -1)
+                if [ -n "$pkg_wheel" ] && [ -f "$pkg_wheel" ]; then
+                    echo -e "${BLUE}Selected $pkg wheel: $(basename $pkg_wheel)${NC}"
+                    cp "$pkg_wheel" "$COMPAT_WHEELS_DIR/"
+                else
+                    echo -e "${YELLOW}Warning: No matching $pkg wheel found for $ARCH_SUFFIX${NC}"
+                fi
+            done
 
             COMPAT_COUNT=$(ls "$COMPAT_WHEELS_DIR"/*.whl 2>/dev/null | wc -l)
             echo -e "${BLUE}Selected $COMPAT_COUNT compatible wheel files for Python $PYTHON_VERSION${NC}"
