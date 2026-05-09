@@ -111,15 +111,23 @@ async def test_database_connection(config_id: int):
             raise HTTPException(status_code=404, detail="Database config not found")
 
     # PostgreSQL, openGauss, GaussDB all use PostgreSQL protocol
+    # Note: GaussDB/openGauss may have different SASL authentication requirements
     try:
-        conn = await asyncpg.connect(
-            host=db_config.host,
-            port=db_config.port,
-            database=db_config.database,
-            user=db_config.username,
-            password=db_config.password,
-            timeout=10,
-        )
+        # Build connection parameters based on database type
+        connect_params = {
+            "host": db_config.host,
+            "port": db_config.port,
+            "database": db_config.database,
+            "user": db_config.username,
+            "password": db_config.password,
+            "timeout": 10,
+        }
+
+        # For GaussDB and openGauss, SSL might be required and helps with authentication
+        if db_config.db_type in ("gaussdb", "opengauss"):
+            connect_params["ssl"] = "prefer"  # Try SSL, fallback to non-SSL
+
+        conn = await asyncpg.connect(**connect_params)
         version = await conn.fetchval("SELECT version()")
         await conn.close()
         return ConnectionTestResponse(
@@ -128,7 +136,11 @@ async def test_database_connection(config_id: int):
             server_version=version,
         )
     except Exception as e:
+        error_msg = str(e)
+        # Provide more helpful error messages for common issues
+        if "SASL" in error_msg:
+            error_msg = f"SASL认证不支持，请检查数据库是否配置了标准认证方式(md5/scram-sha-256)。详情: {error_msg}"
         return ConnectionTestResponse(
             success=False,
-            message=f"连接失败: {str(e)}",
+            message=f"连接失败: {error_msg}",
         )

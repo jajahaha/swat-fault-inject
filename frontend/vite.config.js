@@ -8,7 +8,7 @@ export default defineConfig({
     port: 9020,
     proxy: {
       '/api': {
-        target: 'http://localhost:9010',
+        target: 'http://127.0.0.1:9010',  // Use explicit IPv4 to avoid IPv6 connection issues
         changeOrigin: true,
       },
     },

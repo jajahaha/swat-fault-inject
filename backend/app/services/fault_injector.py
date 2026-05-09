@@ -36,13 +36,19 @@ class FaultInjector:
             # Create connections
             for i in range(concurrency):
                 try:
-                    conn = await asyncpg.connect(
-                        host=self.db_config.host,
-                        port=self.db_config.port,
-                        database=self.db_config.database,
-                        user=self.db_config.username,
-                        password=self.db_config.password,
-                    )
+                    # Build connection parameters
+                    connect_params = {
+                        "host": self.db_config.host,
+                        "port": self.db_config.port,
+                        "database": self.db_config.database,
+                        "user": self.db_config.username,
+                        "password": self.db_config.password,
+                    }
+                    # For GaussDB/openGauss, SSL might help with authentication
+                    if self.db_config.db_type in ("gaussdb", "opengauss"):
+                        connect_params["ssl"] = "prefer"
+
+                    conn = await asyncpg.connect(**connect_params)
                     self.connections.append(conn)
                     self.log(f"Connection {i + 1}/{concurrency} established")
                 except Exception as e:

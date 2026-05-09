@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.4] - 2026-05-09
+
+### Fixed
+
+- **修复 Vite 代理 IPv6 连接问题**
+  - 代理目标从 `localhost` 改为 `127.0.0.1`，强制使用 IPv4
+  - 解决 `connect ECONNREFUSED ::1:9010` 错误
+
+- **优化 GaussDB/openGauss 连接认证**
+  - 为 GaussDB 和 openGauss 添加 `ssl="prefer"` 参数
+  - 改进 SASL 认证错误的提示信息
+  - 注意：GaussDB 若使用非标准认证方式仍可能失败
+
+### Problem
+
+- Vite 代理使用 `localhost`，部分系统优先解析为 IPv6 (::1)
+- 后端只监听 IPv4 (127.0.0.1)，导致连接被拒绝
+- GaussDB/openGauss 可能使用非标准 SASL 认证机制
+
+### Solution
+
+- 前端 vite.config.js: `target: 'http://127.0.0.1:9010'`
+- 后端 asyncpg.connect 添加 SSL 参数并改进错误提示
+
 ## [1.4.3] - 2026-05-09
 
 ### Fixed
