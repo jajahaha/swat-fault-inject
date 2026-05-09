@@ -5,6 +5,7 @@ import psycopg2
 import subprocess
 import os
 import shlex
+import sys
 from datetime import datetime
 from typing import List, Dict, Any
 import json
@@ -17,6 +18,15 @@ active_injections: Dict[int, "FaultInjector"] = {}
 
 # Thread pool for synchronous operations
 sync_executor = ThreadPoolExecutor(max_workers=200)
+
+
+# Python 3.7 compatible async thread wrapper
+async def run_sync(func, *args):
+    """Run synchronous function in thread pool (Python 3.7 compatible)"""
+    loop = asyncio.get_event_loop()
+    if args:
+        return await loop.run_in_executor(None, lambda: func(*args))
+    return await loop.run_in_executor(None, func)
 
 
 class FaultInjector:
@@ -135,7 +145,7 @@ class FaultInjector:
         # Create connections in thread pool
         for i in range(concurrency):
             try:
-                conn = await asyncio.to_thread(create_connection)
+                conn = await run_sync(create_connection)
                 self.connections.append(conn)
                 self.log(f"Connection {i + 1}/{concurrency} established")
             except Exception as e:
@@ -225,13 +235,14 @@ class FaultInjector:
                 env["PGPASSWORD"] = self.db_config.password
 
                 # Start gsql process
-                process = await asyncio.to_thread(
-                    subprocess.Popen,
-                    base_cmd,
-                    stdin=subprocess.PIPE,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    env=env,
+                process = await run_sync(
+                    lambda: subprocess.Popen(
+                        base_cmd,
+                        stdin=subprocess.PIPE,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        env=env,
+                    )
                 )
                 self.gsql_processes.append(process)
                 self.log(f"gsql session {i + 1}/{concurrency} started")
@@ -326,7 +337,7 @@ class FaultInjector:
         # Create connections
         for i in range(concurrency):
             try:
-                conn = await asyncio.to_thread(create_jdbc_connection)
+                conn = await run_sync(create_jdbc_connection)
                 self.connections.append(conn)
                 self.log(f"JDBC connection {i + 1}/{concurrency} established")
             except Exception as e:
@@ -381,7 +392,7 @@ class FaultInjector:
                 if self.connection_method == "asyncpg":
                     await conn.close()
                 else:
-                    await asyncio.to_thread(conn.close)
+                    await run_sync(conn.close)
                 self.log(f"Connection {i + 1} closed")
             except Exception as e:
                 self.log(f"Error closing connection {i + 1}: {str(e)}")

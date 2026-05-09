@@ -7,6 +7,7 @@ import asyncio
 import subprocess
 import os
 import shlex
+import sys
 
 from app.database import async_session, DatabaseConfig
 from app.models.schemas import (
@@ -17,6 +18,12 @@ from app.models.schemas import (
 )
 import asyncpg
 import psycopg2
+
+# Python 3.7 compatible async thread wrapper
+async def run_sync(func, *args):
+    """Run synchronous function in thread pool (Python 3.7 compatible)"""
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, func, *args)
 
 router = APIRouter(prefix="/api/database-configs", tags=["database-configs"])
 
@@ -194,7 +201,7 @@ async def _test_psycopg2(db_config) -> ConnectionTestResponse:
         return version
 
     try:
-        version = await asyncio.to_thread(connect_psycopg2)
+        version = await run_sync(connect_psycopg2)
         return ConnectionTestResponse(
             success=True,
             message=f"{db_config.db_type} 连接成功 (psycopg2)",
@@ -271,7 +278,7 @@ async def _test_gsql(db_config) -> ConnectionTestResponse:
                             continue
                 return None
 
-        result = await asyncio.to_thread(run_gsql)
+        result = await run_sync(run_gsql)
 
         if result is None:
             return ConnectionTestResponse(
@@ -363,7 +370,7 @@ async def _test_jdbc(db_config) -> ConnectionTestResponse:
             except Exception as e:
                 raise e
 
-        version = await asyncio.to_thread(connect_jdbc)
+        version = await run_sync(connect_jdbc)
         return ConnectionTestResponse(
             success=True,
             message=f"{db_config.db_type} 连接成功 (JDBC)",

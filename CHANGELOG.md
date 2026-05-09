@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.5.1] - 2026-05-09
+
+### Fixed
+
+- **修复 Python 3.7 兼容性问题**
+  - 替换 `asyncio.to_thread` (Python 3.9+) 为 `loop.run_in_executor` (Python 3.7+)
+  - 修复 gsql、JDBC、psycopg2 连接测试和故障注入功能
+
+### Technical
+
+- 添加 `run_sync()` helper 函数用于异步包装同步操作
+- 所有同步数据库操作使用线程池执行
+
 ## [1.5.0] - 2026-05-09
 
 ### Added
