@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
+from typing import List
 
 from app.database import async_session, DatabaseConfig
 from app.models.schemas import (
@@ -27,7 +28,7 @@ async def get_database_types():
     return SUPPORTED_DB_TYPES
 
 
-@router.get("", response_model=list[DatabaseConfigResponse])
+@router.get("", response_model=List[DatabaseConfigResponse])
 async def get_database_configs():
     async with async_session() as session:
         result = await session.execute(select(DatabaseConfig))

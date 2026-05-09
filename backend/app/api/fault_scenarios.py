@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from sqlalchemy import select, delete
+from typing import List
 import json
 
 from app.database import async_session, FaultScenario
@@ -12,7 +13,7 @@ from app.models.schemas import (
 router = APIRouter(prefix="/api/fault-scenarios", tags=["fault-scenarios"])
 
 
-@router.get("", response_model=list[FaultScenarioResponse])
+@router.get("", response_model=List[FaultScenarioResponse])
 async def get_fault_scenarios():
     async with async_session() as session:
         result = await session.execute(select(FaultScenario))

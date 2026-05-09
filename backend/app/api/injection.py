@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from sqlalchemy import select
 from datetime import datetime
+from typing import List
 import asyncio
 import json
 
@@ -84,7 +85,7 @@ async def get_injection_status(record_id: int):
         return record.to_dict()
 
 
-@router.get("/records", response_model=list[InjectionRecordResponse])
+@router.get("/records", response_model=List[InjectionRecordResponse])
 async def get_injection_records():
     async with async_session() as session:
         result = await session.execute(

@@ -1,5 +1,5 @@
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, select
 from datetime import datetime
 import json
@@ -7,11 +7,9 @@ import json
 from app.config import DATABASE_URL
 
 engine = create_async_engine(DATABASE_URL, echo=False)
-async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
-
-class Base(DeclarativeBase):
-    pass
+Base = declarative_base()
 
 
 class DatabaseConfig(Base):
@@ -19,7 +17,7 @@ class DatabaseConfig(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(100), nullable=False)
-    db_type = Column(String(50), nullable=False, default="postgresql")  # postgresql, opengauss, gaussdb
+    db_type = Column(String(50), nullable=False, default="postgresql")
     host = Column(String(255), nullable=False)
     port = Column(Integer, nullable=False)
     database = Column(String(100), nullable=False)

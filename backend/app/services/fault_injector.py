@@ -1,12 +1,13 @@
 import asyncpg
 import asyncio
 from datetime import datetime
+from typing import List, Dict
 import json
 from sqlalchemy import select
 
 from app.database import async_session, InjectionRecord
 
-active_injections: dict[int, "FaultInjector"] = {}
+active_injections: Dict[int, "FaultInjector"] = {}
 
 
 class FaultInjector:
@@ -14,9 +15,9 @@ class FaultInjector:
         self.record_id = record_id
         self.db_config = db_config
         self.config = scenario_config
-        self.connections: list[asyncpg.Connection] = []
+        self.connections: List[asyncpg.Connection] = []
         self.running = False
-        self.log_lines: list[str] = []
+        self.log_lines: List[str] = []
 
     async def run(self):
         self.running = True

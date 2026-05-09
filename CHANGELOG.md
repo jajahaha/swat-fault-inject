@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.0] - 2026-05-09
+
+### Fixed
+
+- **修复 Python 3.7 语法兼容性**
+  - 将 Python 3.9+ 类型注解语法 (`list[]`, `dict[]`) 改为 Python 3.7 兼容语法 (`List[]`, `Dict[]`)
+  - 使用 `declarative_base()` 替代 `DeclarativeBase` (SQLAlchemy 2.0 兼容)
+  - 使用 `sessionmaker` 替代 `async_sessionmaker` (Python 3.7 兼容)
+
+### Changed
+
+- database.py: SQLAlchemy 1.4 风格声明基类
+- fault_injector.py: 使用 typing.List 和 typing.Dict
+- injection.py: 使用 typing.List
+- fault_scenarios.py: 使用 typing.List
+- database_config.py: 使用 typing.List
+
 ## [1.2.9] - 2026-05-09
 
 ### Added
