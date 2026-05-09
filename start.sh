@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # SWAT Fault Inject Platform - Start Script
-# Version: 1.1.0
+# Version: 1.1.6
 
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BACKEND_DIR="$PROJECT_DIR/backend"
@@ -12,6 +12,7 @@ LOG_DIR="$PROJECT_DIR/logs"
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Create log directory
@@ -24,7 +25,7 @@ if [ -f "$DB_FILE" ]; then
 fi
 
 echo "=========================================="
-echo "  SWAT Fault Inject Platform v1.1.5"
+echo "  SWAT Fault Inject Platform v1.1.6"
 echo "  Starting services..."
 echo "=========================================="
 
@@ -68,6 +69,48 @@ if check_port 9020; then
     sleep 2
 fi
 
+# Setup Backend Environment
+echo -e "${BLUE}Checking backend environment...${NC}"
+cd "$BACKEND_DIR"
+
+# Create virtual environment if not exists
+if [ ! -d "venv" ]; then
+    echo -e "${YELLOW}Creating Python virtual environment...${NC}"
+    python3 -m venv venv
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}Failed to create virtual environment!${NC}"
+        exit 1
+    fi
+fi
+
+# Activate virtual environment
+source venv/bin/activate
+
+# Install dependencies if needed
+if [ ! -f "venv/.installed" ] || [ "requirements.txt" -nt "venv/.installed" ]; then
+    echo -e "${YELLOW}Installing Python dependencies...${NC}"
+    pip install -r requirements.txt -q
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}Failed to install Python dependencies!${NC}"
+        exit 1
+    fi
+    touch venv/.installed
+fi
+
+# Setup Frontend Environment
+echo -e "${BLUE}Checking frontend environment...${NC}"
+cd "$FRONTEND_DIR"
+
+# Install npm dependencies if needed
+if [ ! -d "node_modules" ] || [ "package.json" -nt "node_modules" ]; then
+    echo -e "${YELLOW}Installing npm dependencies...${NC}"
+    npm install --silent
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}Failed to install npm dependencies!${NC}"
+        exit 1
+    fi
+fi
+
 # Start Backend
 echo -e "${GREEN}Starting Backend (port 9010)...${NC}"
 cd "$BACKEND_DIR"
@@ -83,6 +126,7 @@ if wait_for_service 9010; then
     echo "  Docs: http://localhost:9010/docs"
 else
     echo -e "${RED}Backend failed to start!${NC}"
+    cat "$LOG_DIR/backend.log"
     exit 1
 fi
 
@@ -99,6 +143,7 @@ if wait_for_service 9020; then
     echo "  UI: http://localhost:9020"
 else
     echo -e "${RED}Frontend failed to start!${NC}"
+    cat "$LOG_DIR/frontend.log"
     exit 1
 fi
 

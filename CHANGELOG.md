@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.6] - 2026-05-09
+
+### Fixed
+
+- 修复 start.sh 在新环境中无法运行的错误
+  - 自动创建 Python 虚拟环境（如果不存在）
+  - 自动安装 Python 依赖（使用 venv/.installed 标记避免重复安装）
+  - 自动安装 npm 依赖（如果 node_modules 不存在）
+  - 启动失败时显示日志内容便于排查问题
+
 ## [1.1.5] - 2026-05-09
 
 ### Fixed
