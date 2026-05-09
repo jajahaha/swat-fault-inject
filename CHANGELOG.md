@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.2] - 2026-05-09
+
+### Added
+
+- **Node.js 检测和安装提示**
+  - 启动前检测 Node.js 和 npm 是否安装
+  - 提供在线安装命令（apt/yum/brew）
+  - 提供离线安装指南（下载 Node.js tar.gz）
+  - 验证 Node.js 版本 >= 18
+
+### Requirements
+
+- Node.js 18+ 是必需依赖（前端运行）
+- aarch64 用户需下载 ARM64 版本的 Node.js
+
 ## [1.3.1] - 2026-05-09
 
 ### Added

@@ -25,7 +25,7 @@ if [ -f "$DB_FILE" ]; then
 fi
 
 echo "=========================================="
-echo "  SWAT Fault Inject Platform v1.3.1"
+echo "  SWAT Fault Inject Platform v1.3.2"
 echo "  Starting services..."
 echo "=========================================="
 
@@ -56,6 +56,45 @@ if [ "$PYTHON_MAJOR" -lt 3 ] || ([ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" 
 fi
 
 echo -e "${GREEN}Python version: $PYTHON_VERSION (OK)${NC}"
+
+# Check Node.js version
+NODE_VERSION=$(node --version 2>&1 | sed 's/v//')
+if [ $? -ne 0 ]; then
+    echo -e "${RED}Error: Node.js is not installed!${NC}"
+    echo ""
+    echo "Node.js 18+ is required for the frontend."
+    echo ""
+    echo "Please install Node.js:"
+    echo "  - Ubuntu/Debian: sudo apt install nodejs npm"
+    echo "  - CentOS/RHEL: sudo yum install nodejs npm"
+    echo "  - macOS: brew install node"
+    echo ""
+    echo "For offline installation, download Node.js from:"
+    echo "  https://nodejs.org/dist/v18.20.2/node-v18.20.2-linux-arm64.tar.gz"
+    echo ""
+    echo "Install offline Node.js:"
+    echo "  tar -xzf node-v18.20.2-linux-arm64.tar.gz"
+    echo "  sudo cp -r node-v18.20.2-linux-arm64/* /usr/local/"
+    echo ""
+    echo "After installing Node.js, run ./start.sh again"
+    exit 1
+fi
+
+NODE_MAJOR=$(echo $NODE_VERSION | cut -d. -f1)
+if [ "$NODE_MAJOR" -lt 18 ]; then
+    echo -e "${YELLOW}Warning: Node.js $NODE_VERSION detected, but version 18+ is recommended${NC}"
+else
+    echo -e "${GREEN}Node.js version: $NODE_VERSION (OK)${NC}"
+fi
+
+# Check npm
+NPM_VERSION=$(npm --version 2>&1)
+if [ $? -ne 0 ]; then
+    echo -e "${RED}Error: npm is not installed!${NC}"
+    echo "Please install npm together with Node.js"
+    exit 1
+fi
+echo -e "${GREEN}npm version: $NPM_VERSION (OK)${NC}"
 
 # Function to check if port is in use
 check_port() {
