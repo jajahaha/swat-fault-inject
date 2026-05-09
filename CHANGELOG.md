@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.4] - 2026-05-09
+
+### Fixed
+
+- **同时支持 Python 3.7 和 Python 3.12**
+  - asyncpg: 包含 cp37 和 cp312 双版本 wheel
+  - greenlet: 包含 cp37 和 cp312 双版本 wheel
+  - pip 安装时自动选择兼容当前 Python 版本的包
+  - 总共 25 个 wheel 文件（+2 个 Python 3.7 版本）
+
+### Changes
+
+- 修复路径错误：`backend/backend/packages/` → `backend/packages/`
+- asyncpg 0.31.0 (Python 3.12) + asyncpg 0.25.0 (Python 3.7)
+- greenlet 3.5.0 (Python 3.12) + greenlet 1.1.3 (Python 3.7)
+
 ## [1.2.3] - 2026-05-09
 
 ### Fixed
