@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # SWAT Fault Inject Platform - Start Script
-# Version: 1.1.7
+# Version: 1.1.8
 
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BACKEND_DIR="$PROJECT_DIR/backend"
@@ -25,9 +25,28 @@ if [ -f "$DB_FILE" ]; then
 fi
 
 echo "=========================================="
-echo "  SWAT Fault Inject Platform v1.1.7"
+echo "  SWAT Fault Inject Platform v1.1.8"
 echo "  Starting services..."
 echo "=========================================="
+
+# Check Python version
+PYTHON_VERSION=$(python3 --version 2>&1 | awk '{print $2}')
+PYTHON_MAJOR=$(echo $PYTHON_VERSION | cut -d. -f1)
+PYTHON_MINOR=$(echo $PYTHON_VERSION | cut -d. -f2)
+
+if [ "$PYTHON_MAJOR" -lt 3 ] || ([ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -lt 10 ]); then
+    echo -e "${RED}Error: Python 3.10+ is required!${NC}"
+    echo -e "${RED}Current version: Python $PYTHON_VERSION${NC}"
+    echo ""
+    echo "Please install Python 3.10 or higher:"
+    echo "  - Ubuntu/Debian: sudo apt install python3.10"
+    echo "  - CentOS/RHEL: sudo yum install python3.10"
+    echo "  - macOS: brew install python@3.10"
+    echo "  - Windows: Download from https://python.org"
+    exit 1
+fi
+
+echo -e "${GREEN}Python version: $PYTHON_VERSION (OK)${NC}"
 
 # Function to check if port is in use
 check_port() {
@@ -89,16 +108,25 @@ source venv/bin/activate
 # Install dependencies (prefer local packages for offline install)
 if [ ! -f "venv/.installed" ]; then
     echo -e "${YELLOW}Installing Python dependencies...${NC}"
+    # First try offline install from local packages
     if [ -d "packages" ] && [ "$(ls -A packages 2>/dev/null)" ]; then
-        echo -e "${BLUE}Installing from local packages directory...${NC}"
-        pip install --no-index --find-links=packages -r requirements.txt -q
+        echo -e "${BLUE}Trying offline install from local packages...${NC}"
+        pip install --no-index --find-links=packages -r requirements.txt -q 2>/dev/null
+        if [ $? -ne 0 ]; then
+            echo -e "${YELLOW}Offline install failed, falling back to online install...${NC}"
+            pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple -q
+            if [ $? -ne 0 ]; then
+                echo -e "${RED}Failed to install Python dependencies!${NC}"
+                exit 1
+            fi
+        fi
     else
         echo -e "${BLUE}Downloading from PyPI mirror...${NC}"
         pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple -q
-    fi
-    if [ $? -ne 0 ]; then
-        echo -e "${RED}Failed to install Python dependencies!${NC}"
-        exit 1
+        if [ $? -ne 0 ]; then
+            echo -e "${RED}Failed to install Python dependencies!${NC}"
+            exit 1
+        fi
     fi
     touch venv/.installed
 fi

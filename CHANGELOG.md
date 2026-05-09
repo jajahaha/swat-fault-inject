@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.8] - 2026-05-09
+
+### Fixed
+
+- 添加 Python 版本检查，要求 Python 3.10+（FastAPI 依赖要求）
+- 离线安装失败时自动回退到在线安装
+- 重新下载 Python 3.10+ 兼容的依赖包
+
+### Added
+
+- Python 版本检测和安装指引提示
+- 离线/在线安装自动切换机制
+
 ## [1.1.7] - 2026-05-09
 
 ### Added

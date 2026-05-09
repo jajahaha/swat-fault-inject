@@ -4,7 +4,13 @@
 
 ## 版本
 
-**v1.1.7** - 2026-05-09
+**v1.1.8** - 2026-05-09
+
+## 环境要求
+
+- **Python 3.10+**（FastAPI 等依赖要求）
+- **Node.js 18+**
+- PostgreSQL / openGauss / GaussDB（目标测试数据库）
 
 ## 功能特性
 
@@ -68,8 +74,8 @@ swat-fault-inject/
 
 ### 环境要求
 
-- Python 3.12+
-- Node.js 18+
+- **Python 3.10+**（FastAPI 等依赖要求）
+- **Node.js 18+**
 - PostgreSQL / openGauss / GaussDB（目标测试数据库）
 
 ### 一键启动

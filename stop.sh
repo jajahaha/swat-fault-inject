@@ -13,7 +13,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 echo "=========================================="
-echo "  SWAT Fault Inject Platform v1.1.7"
+echo "  SWAT Fault Inject Platform v1.1.8"
 echo "  Stopping services..."
 echo "=========================================="
 
