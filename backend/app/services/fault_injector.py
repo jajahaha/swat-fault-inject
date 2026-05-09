@@ -199,6 +199,7 @@ class FaultInjector:
         gsql_path = "gsql"
         gsql_paths = [
             "gsql",
+            "/usr/bin/gsql",
             "/usr/local/bin/gsql",
             "/opt/gaussdb/bin/gsql",
             "/opt/opengauss/bin/gsql",

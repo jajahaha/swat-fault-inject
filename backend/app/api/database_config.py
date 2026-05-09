@@ -257,6 +257,7 @@ async def _test_gsql(db_config) -> ConnectionTestResponse:
             except FileNotFoundError:
                 # gsql not found, try to find it in common paths
                 gsql_paths = [
+                    "/usr/bin/gsql",
                     "/usr/local/bin/gsql",
                     "/opt/gaussdb/bin/gsql",
                     "/opt/opengauss/bin/gsql",
