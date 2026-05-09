@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.9] - 2026-05-09
+
+### Changed
+
+- **兼容 Python 3.7+**（之前要求 Python 3.10+）
+  - 降级 FastAPI 到 0.95.x（最后一个支持 Python 3.7 的版本）
+  - 降级 Pydantic 到 v1.x（v2 需要 Python 3.7+ 但某些特性不兼容 3.7）
+  - 降级其他依赖到兼容 Python 3.7 的版本
+  - 重新下载 Python 3.7 兼容的依赖包
+
+### Fixed
+
+- 移除 Python 3.10+ 硬性要求，改为 Python 3.7+ 即可运行
+
 ## [1.1.8] - 2026-05-09
 
 ### Fixed

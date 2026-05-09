@@ -75,7 +75,7 @@ async def update_database_config(config_id: int, config: DatabaseConfigUpdate):
         if not db_config:
             raise HTTPException(status_code=404, detail="Database config not found")
 
-        update_data = config.model_dump(exclude_unset=True)
+        update_data = config.dict(exclude_unset=True)
         for key, value in update_data.items():
             setattr(db_config, key, value)
 

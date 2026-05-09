@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # SWAT Fault Inject Platform - Start Script
-# Version: 1.1.8
+# Version: 1.1.9
 
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BACKEND_DIR="$PROJECT_DIR/backend"
@@ -25,7 +25,7 @@ if [ -f "$DB_FILE" ]; then
 fi
 
 echo "=========================================="
-echo "  SWAT Fault Inject Platform v1.1.8"
+echo "  SWAT Fault Inject Platform v1.1.9"
 echo "  Starting services..."
 echo "=========================================="
 
@@ -34,14 +34,14 @@ PYTHON_VERSION=$(python3 --version 2>&1 | awk '{print $2}')
 PYTHON_MAJOR=$(echo $PYTHON_VERSION | cut -d. -f1)
 PYTHON_MINOR=$(echo $PYTHON_VERSION | cut -d. -f2)
 
-if [ "$PYTHON_MAJOR" -lt 3 ] || ([ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -lt 10 ]); then
-    echo -e "${RED}Error: Python 3.10+ is required!${NC}"
+if [ "$PYTHON_MAJOR" -lt 3 ] || ([ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -lt 7 ]); then
+    echo -e "${RED}Error: Python 3.7+ is required!${NC}"
     echo -e "${RED}Current version: Python $PYTHON_VERSION${NC}"
     echo ""
-    echo "Please install Python 3.10 or higher:"
-    echo "  - Ubuntu/Debian: sudo apt install python3.10"
-    echo "  - CentOS/RHEL: sudo yum install python3.10"
-    echo "  - macOS: brew install python@3.10"
+    echo "Please install Python 3.7 or higher:"
+    echo "  - Ubuntu/Debian: sudo apt install python3.8"
+    echo "  - CentOS/RHEL: sudo yum install python38"
+    echo "  - macOS: brew install python@3.8"
     echo "  - Windows: Download from https://python.org"
     exit 1
 fi

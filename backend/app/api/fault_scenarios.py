@@ -57,7 +57,7 @@ async def update_fault_scenario(scenario_id: int, scenario: FaultScenarioUpdate)
         if not fault_scenario:
             raise HTTPException(status_code=404, detail="Fault scenario not found")
 
-        update_data = scenario.model_dump(exclude_unset=True)
+        update_data = scenario.dict(exclude_unset=True)
         for key, value in update_data.items():
             if key == "config" and value is not None:
                 setattr(fault_scenario, key, json.dumps(value))
