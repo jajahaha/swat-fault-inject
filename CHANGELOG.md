@@ -2,6 +2,39 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.7] - 2026-05-09
+
+### Fixed
+
+- **完全兼容 Python 3.7.9 离线安装**
+  - 所有纯 Python 包降级到 Python 3.7 兼容版本
+  - anyio: 4.13.0 → 3.7.1 (要求 Python >=3.10)
+  - click: 8.3.3 → 8.0.4
+  - packaging: 26.2 → 21.3
+  - pluggy: 1.6.0 → 1.0.0
+  - sniffio: 1.3.1 → 1.2.0
+  - aiosqlite: 0.19.0 → 0.17.0
+  - certifi: 2026.4.22 → 2021.10.8
+  - idna: 3.13 → 3.3
+  - h11: 0.14.0 → 0.12.0
+  - httpcore: 0.17.3 → 0.15.0
+  - httpx: 0.24.1 → 0.23.0
+  - pytest: 7.4.0 → 7.2.0
+  - pytest_asyncio: 0.21.0 → 0.20.3
+  - iniconfig: 2.3.0 → 1.1.1
+  - typing_extensions: 4.15.0 → 4.7.1
+
+### Added
+
+- **pip wheel 预升级机制**
+  - 先安装 pip 21.3.1 wheel，支持 manylinux2014+ 标签
+  - SQLAlchemy 使用版本特定 wheel (cp37, cp38, ..., cp312)
+
+### Changes
+
+- 总计 38 个 wheel 文件
+- 支持 py2.py3-none-any 格式的 wheel（兼容 Python 2 和 3）
+
 ## [1.2.6] - 2026-05-09
 
 ### Fixed

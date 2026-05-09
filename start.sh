@@ -25,7 +25,7 @@ if [ -f "$DB_FILE" ]; then
 fi
 
 echo "=========================================="
-echo "  SWAT Fault Inject Platform v1.2.6"
+echo "  SWAT Fault Inject Platform v1.2.7"
 echo "  Starting services..."
 echo "=========================================="
 
@@ -120,16 +120,23 @@ if [ ! -f "venv/.installed" ]; then
         if [ "$WHEEL_COUNT" -gt 0 ]; then
             echo -e "${BLUE}Installing from local packages (offline)...${NC}"
 
+            # Step 1: Upgrade pip first (required for manylinux2014+ wheel support)
+            if [ -f "packages/pip-*.whl" ]; then
+                echo -e "${YELLOW}Upgrading pip for better wheel compatibility...${NC}"
+                pip install --no-index --no-deps packages/pip-*.whl
+            fi
+
             # Filter wheel files by Python version compatibility
             # - py3-none-any wheels work on all Python 3 versions
+            # - py2.py3-none-any wheels work on Python 2 and 3
             # - cp37 wheels work on Python 3.7
             # - cp312 wheels work on Python 3.12+
 
             # Create a temporary directory for compatible wheels
             COMPAT_WHEELS_DIR=$(mktemp -d)
 
-            # Copy pure Python wheels (py3-none-any)
-            for wheel in packages/*-py3-none-any.whl; do
+            # Copy pure Python wheels (py3-none-any and py2.py3-none-any)
+            for wheel in packages/*-py3-none-any.whl packages/*-py2.py3-none-any.whl; do
                 if [ -f "$wheel" ]; then
                     cp "$wheel" "$COMPAT_WHEELS_DIR/"
                 fi

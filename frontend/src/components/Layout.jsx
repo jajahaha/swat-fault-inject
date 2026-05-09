@@ -45,7 +45,7 @@ function Layout({ children }) {
             style={{ height: '100%', borderRight: 0 }}
           />
           <div style={{ padding: '16px', textAlign: 'center', color: '#999' }}>
-            v1.2.6
+            v1.2.7
           </div>
         </Sider>
         <Content
