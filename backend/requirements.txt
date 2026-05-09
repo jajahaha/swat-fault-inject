@@ -1,10 +1,10 @@
-# Python 3.7+ compatible - fixed versions
+# Python 3.7+ compatible - fixed versions (manylinux1 compatible)
 fastapi==0.99.1
 uvicorn==0.22.0
 starlette==0.27.0
 sqlalchemy==2.0.23
 aiosqlite==0.19.0
-asyncpg==0.28.0
+asyncpg==0.25.0
 pydantic==1.10.13
 python-multipart==0.0.6
 

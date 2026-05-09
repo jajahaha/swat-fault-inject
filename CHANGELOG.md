@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.3] - 2026-05-09
+
+### Fixed
+
+- **修复 wheel 文件平台标签兼容性问题**
+  - asyncpg 改用 manylinux1 标签（兼容旧版 pip）
+  - SQLAlchemy 使用 py3-none-any（纯 Python，无平台限制）
+  - greenlet 使用 manylinux1 标签
+  - asyncpg 版本降级到 0.25.0（有 manylinux1 支持）
+
+### Changes
+
+- asyncpg: 0.28.0 → 0.25.0
+- SQLAlchemy: cp37 wheel → py3-none-any wheel
+- greenlet: manylinux_2_17 → manylinux1
+
 ## [1.2.2] - 2026-05-09
 
 ### Fixed
