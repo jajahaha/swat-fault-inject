@@ -85,11 +85,27 @@ async def get_injection_status(record_id: int):
         return record.to_dict()
 
 
-@router.get("/records", response_model=List[InjectionRecordResponse])
+@router.get("/records")
 async def get_injection_records():
     async with async_session() as session:
+        # Join with fault_scenarios and database_configs to get names
+        from sqlalchemy.orm import selectinload
+        from app.database import FaultScenario, DatabaseConfig
+        
         result = await session.execute(
-            select(InjectionRecord).order_by(InjectionRecord.started_at.desc())
+            select(InjectionRecord)
+            .options(selectinload(InjectionRecord.scenario))
+            .options(selectinload(InjectionRecord.db_config))
+            .order_by(InjectionRecord.started_at.desc())
         )
         records = result.scalars().all()
-        return [record.to_dict() for record in records]
+        
+        # Build response with scenario_name and db_config_name
+        response = []
+        for record in records:
+            data = record.to_dict()
+            data['scenario_name'] = record.scenario.name if record.scenario else None
+            data['db_config_name'] = record.db_config.name if record.db_config else None
+            response.append(data)
+        
+        return response

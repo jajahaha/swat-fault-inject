@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import {
+  Card,
   Table,
   Button,
   Modal,
@@ -13,21 +14,33 @@ import {
   Tag,
   Popconfirm,
   Tooltip,
+  Row,
+  Col,
+  Statistic,
 } from 'antd'
-import { PlusOutlined, EditOutlined, DeleteOutlined, LinkOutlined, InfoCircleOutlined } from '@ant-design/icons'
+import { 
+  PlusOutlined, 
+  EditOutlined, 
+  DeleteOutlined, 
+  LinkOutlined, 
+  InfoCircleOutlined,
+  DatabaseOutlined,
+  CheckCircleOutlined,
+  CloseCircleOutlined,
+} from '@ant-design/icons'
 import { databaseConfigApi } from '../api'
 
 const DB_TYPE_COLORS = {
-  postgresql: 'blue',
-  opengauss: 'green',
-  gaussdb: 'orange',
+  postgresql: { bg: '#e6f7ff', text: '#1890ff', border: '#91d5ff' },
+  opengauss: { bg: '#f6ffed', text: '#52c41a', border: '#b7eb8f' },
+  gaussdb: { bg: '#fff7e6', text: '#fa8c16', border: '#ffd591' },
 }
 
 const CONNECTION_METHOD_COLORS = {
-  asyncpg: 'blue',
-  psycopg2: 'green',
+  asyncpg: 'processing',
+  psycopg2: 'success',
   gsql: 'purple',
-  jdbc: 'orange',
+  jdbc: 'warning',
 }
 
 function DatabaseConfig() {
@@ -41,7 +54,6 @@ function DatabaseConfig() {
   const [form] = Form.useForm()
   const [selectedDbType, setSelectedDbType] = useState('postgresql')
 
-  // Load data when route changes to this page
   useEffect(() => {
     loadConfigs()
     loadDbTypes()
@@ -78,10 +90,10 @@ function DatabaseConfig() {
       setConnectionMethods(response.data)
     } catch (error) {
       setConnectionMethods([
-        { value: 'asyncpg', label: 'asyncpg (Python异步驱动)', supported_db_types: ['postgresql'] },
-        { value: 'psycopg2', label: 'psycopg2 (Python同步驱动)', supported_db_types: ['postgresql', 'opengauss', 'gaussdb'] },
-        { value: 'gsql', label: 'gsql (命令行工具)', supported_db_types: ['opengauss', 'gaussdb'] },
-        { value: 'jdbc', label: 'JDBC (Java驱动)', supported_db_types: ['opengauss', 'gaussdb'] },
+        { value: 'asyncpg', label: 'asyncpg', supported_db_types: ['postgresql'] },
+        { value: 'psycopg2', label: 'psycopg2', supported_db_types: ['postgresql', 'opengauss', 'gaussdb'] },
+        { value: 'gsql', label: 'gsql', supported_db_types: ['opengauss', 'gaussdb'] },
+        { value: 'jdbc', label: 'JDBC', supported_db_types: ['opengauss', 'gaussdb'] },
       ])
     }
   }
@@ -112,7 +124,6 @@ function DatabaseConfig() {
     if (selectedType) {
       form.setFieldsValue({ port: selectedType.default_port })
     }
-    // Auto-select appropriate connection method
     if (value === 'postgresql') {
       form.setFieldsValue({ connection_method: 'asyncpg' })
     } else if (value === 'opengauss' || value === 'gaussdb') {
@@ -172,20 +183,43 @@ function DatabaseConfig() {
     }
   }
 
-  // Filter connection methods based on selected db type
   const filteredConnectionMethods = connectionMethods.filter(method =>
     method.supported_db_types?.includes(selectedDbType)
   )
 
+  // 统计数据
+  const dbTypeStats = configs.reduce((acc, config) => {
+    acc[config.db_type] = (acc[config.db_type] || 0) + 1
+    return acc
+  }, {})
+
   const columns = [
-    { title: '名称', dataIndex: 'name', key: 'name' },
+    {
+      title: '名称',
+      dataIndex: 'name',
+      key: 'name',
+      render: (name) => <span style={{ fontWeight: 500 }}>{name}</span>,
+    },
     {
       title: '类型',
       dataIndex: 'db_type',
       key: 'db_type',
       render: (type) => {
         const typeInfo = dbTypes.find(t => t.value === type) || { label: type }
-        return <Tag color={DB_TYPE_COLORS[type] || 'default'}>{typeInfo.label}</Tag>
+        const colors = DB_TYPE_COLORS[type] || { bg: '#f5f5f5', text: '#666', border: '#d9d9d9' }
+        return (
+          <Tag 
+            style={{
+              background: colors.bg,
+              color: colors.text,
+              border: `1px solid ${colors.border}`,
+              borderRadius: '6px',
+              padding: '2px 8px',
+            }}
+          >
+            {typeInfo.label}
+          </Tag>
+        )
       },
     },
     {
@@ -197,18 +231,40 @@ function DatabaseConfig() {
         return <Tag color={CONNECTION_METHOD_COLORS[method] || 'default'}>{methodInfo.label}</Tag>
       },
     },
-    { title: '主机', dataIndex: 'host', key: 'host' },
-    { title: '端口', dataIndex: 'port', key: 'port' },
-    { title: '数据库', dataIndex: 'database', key: 'database' },
-    { title: '用户名', dataIndex: 'username', key: 'username' },
+    { 
+      title: '主机', 
+      dataIndex: 'host', 
+      key: 'host',
+      render: (host) => <span style={{ color: '#666' }}>{host}</span>,
+    },
+    { 
+      title: '端口', 
+      dataIndex: 'port', 
+      key: 'port',
+      render: (port) => <span style={{ color: '#999' }}>{port}</span>,
+    },
+    { 
+      title: '数据库', 
+      dataIndex: 'database', 
+      key: 'database',
+      render: (db) => <span style={{ color: '#666' }}>{db}</span>,
+    },
+    { 
+      title: '用户名', 
+      dataIndex: 'username', 
+      key: 'username',
+      render: (user) => <span style={{ color: '#999' }}>{user}</span>,
+    },
     {
       title: '状态',
       key: 'status',
       render: (_, record) => (
         <Button
           size="small"
+          type="link"
           icon={<LinkOutlined />}
           onClick={() => handleTestConnection(record.id)}
+          style={{ color: '#1890ff' }}
         >
           测试连接
         </Button>
@@ -218,21 +274,23 @@ function DatabaseConfig() {
       title: '操作',
       key: 'action',
       render: (_, record) => (
-        <Space>
+        <Space size="small">
           <Button
             size="small"
-            icon={<EditOutlined />}
+            type="text"
+            icon={<EditOutlined style={{ color: '#1890ff' }} />}
             onClick={() => handleEdit(record)}
-          >
-            编辑
-          </Button>
+          />
           <Popconfirm
             title="确定要删除这个配置吗?"
             onConfirm={() => handleDelete(record.id)}
           >
-            <Button size="small" danger icon={<DeleteOutlined />}>
-              删除
-            </Button>
+            <Button 
+              size="small" 
+              type="text" 
+              danger
+              icon={<DeleteOutlined />}
+            />
           </Popconfirm>
         </Space>
       ),
@@ -241,23 +299,130 @@ function DatabaseConfig() {
 
   return (
     <div>
-      <div style={{ marginBottom: 16 }}>
-        <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
-          新建数据库配置
-        </Button>
-      </div>
-      <Table
-        columns={columns}
-        dataSource={configs}
-        rowKey="id"
-        loading={loading}
-      />
+      {/* 统计卡片 */}
+      <Row gutter={16} style={{ marginBottom: 24 }}>
+        <Col span={6}>
+          <Card 
+            bordered={false}
+            style={{
+              borderRadius: '12px',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+            }}
+          >
+            <Statistic
+              title="数据库总数"
+              value={configs.length}
+              prefix={<DatabaseOutlined style={{ color: '#667eea' }} />}
+              valueStyle={{ color: '#667eea', fontWeight: 600 }}
+            />
+          </Card>
+        </Col>
+        <Col span={6}>
+          <Card 
+            bordered={false}
+            style={{
+              borderRadius: '12px',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+            }}
+          >
+            <Statistic
+              title="PostgreSQL"
+              value={dbTypeStats.postgresql || 0}
+              prefix={<CheckCircleOutlined style={{ color: '#1890ff' }} />}
+              valueStyle={{ color: '#1890ff' }}
+            />
+          </Card>
+        </Col>
+        <Col span={6}>
+          <Card 
+            bordered={false}
+            style={{
+              borderRadius: '12px',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+            }}
+          >
+            <Statistic
+              title="openGauss"
+              value={dbTypeStats.opengauss || 0}
+              prefix={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
+              valueStyle={{ color: '#52c41a' }}
+            />
+          </Card>
+        </Col>
+        <Col span={6}>
+          <Card 
+            bordered={false}
+            style={{
+              borderRadius: '12px',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+            }}
+          >
+            <Statistic
+              title="GaussDB"
+              value={dbTypeStats.gaussdb || 0}
+              prefix={<CheckCircleOutlined style={{ color: '#fa8c16' }} />}
+              valueStyle={{ color: '#fa8c16' }}
+            />
+          </Card>
+        </Col>
+      </Row>
+
+      {/* 数据库配置卡片 */}
+      <Card
+        bordered={false}
+        style={{
+          borderRadius: '12px',
+          boxShadow: '0 2px 12px rgba(0, 0, 0, 0.08)',
+        }}
+        extra={
+          <Button 
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={handleCreate}
+            style={{
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              border: 'none',
+              borderRadius: '8px',
+              height: '36px',
+              fontWeight: 500,
+            }}
+          >
+            新建配置
+          </Button>
+        }
+      >
+        <Table
+          columns={columns}
+          dataSource={configs}
+          rowKey="id"
+          loading={loading}
+          pagination={{ 
+            pageSize: 10,
+            showSizeChanger: false,
+            style: { marginTop: 16 },
+          }}
+          style={{
+            borderRadius: '8px',
+          }}
+          rowClassName={(record, index) => 
+            index % 2 === 0 ? 'even-row' : 'odd-row'
+          }
+        />
+      </Card>
+
+      {/* 编辑弹窗 */}
       <Modal
         title={editingConfig ? '编辑数据库配置' : '新建数据库配置'}
         open={modalVisible}
         onOk={handleSubmit}
         onCancel={() => setModalVisible(false)}
         width={600}
+        okButtonProps={{
+          style: {
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            border: 'none',
+          }
+        }}
       >
         <Form form={form} layout="vertical">
           <Form.Item
@@ -285,7 +450,7 @@ function DatabaseConfig() {
             label={
               <span>
                 连接方式
-                <Tooltip title="选择数据库连接方式：asyncpg适用于PostgreSQL；psycopg2兼容性更好；gsql为命令行工具；JDBC需要配置驱动路径">
+                <Tooltip title="asyncpg适用于PostgreSQL；psycopg2兼容性好；gsql为命令行工具；JDBC需配置驱动">
                   <InfoCircleOutlined style={{ marginLeft: 8, color: '#999' }} />
                 </Tooltip>
               </span>
@@ -296,7 +461,6 @@ function DatabaseConfig() {
               {filteredConnectionMethods.map(method => (
                 <Select.Option key={method.value} value={method.value}>
                   {method.label}
-                  {method.os_user && <span style={{ color: '#999', marginLeft: 8 }}>(OS用户: {method.os_user})</span>}
                 </Select.Option>
               ))}
             </Select>
@@ -313,7 +477,7 @@ function DatabaseConfig() {
             label="端口"
             rules={[{ required: true, message: '请输入端口' }]}
           >
-            <InputNumber min={1} max={65535} />
+            <InputNumber min={1} max={65535} style={{ width: '100%' }} />
           </Form.Item>
           <Form.Item
             name="database"
@@ -340,20 +504,32 @@ function DatabaseConfig() {
             label={
               <span>
                 JDBC驱动路径
-                <Tooltip title="仅JDBC连接方式需要，指定JDBC驱动jar文件路径，如: drivers/gaussdbjdbc.jar">
+                <Tooltip title="仅JDBC连接方式需要">
                   <InfoCircleOutlined style={{ marginLeft: 8, color: '#999' }} />
                 </Tooltip>
               </span>
             }
-            rules={[{
-              required: form.getFieldValue('connection_method') === 'jdbc',
-              message: 'JDBC连接方式必须配置驱动路径'
-            }]}
           >
-            <Input placeholder="例如: drivers/gaussdbjdbc.jar 或 /path/to/driver.jar" disabled={form.getFieldValue('connection_method') !== 'jdbc'} />
+            <Input 
+              placeholder="例如: drivers/gaussdbjdbc.jar" 
+              disabled={form.getFieldValue('connection_method') !== 'jdbc'} 
+            />
           </Form.Item>
         </Form>
       </Modal>
+
+      {/* 表格行样式 */}
+      <style>{`
+        .even-row {
+          background: #fafafa;
+        }
+        .odd-row {
+          background: #fff;
+        }
+        .ant-table-row:hover {
+          background: #f5f5f5 !important;
+        }
+      `}</style>
     </div>
   )
 }

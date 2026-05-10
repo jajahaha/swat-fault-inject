@@ -4,7 +4,7 @@
 
 ## 版本
 
-**v1.5.1** - 2026-05-09（修复Python 3.7兼容性问题）
+**v1.6.0** - 2026-05-10（新增演练管理功能）
 
 ## 环境要求
 
@@ -16,6 +16,8 @@
 
 - 支持多数据库类型：PostgreSQL、openGauss、GaussDB
 - 管理不同的故障注入场景
+- **演练管理**：组合多场景批量测试，支持顺序/并行执行
+- **前置准备与清理环境**：每个场景自动执行准备和清理脚本
 - 自动连接数据库执行故障脚本
 - 可配置连接特定数据库
 - 现代美观的前端界面（React + Ant Design）
@@ -43,10 +45,12 @@ swat-fault-inject/
 │   │   ├── api/                 # API路由
 │   │   │   ├── database_config.py
 │   │   │   ├── fault_scenarios.py
-│   │   │   └── injection.py
+│   │   │   ├── injection.py
+│   │   │   └── drill.py         # 演练API
 │   │   ├── models/schemas.py    # Pydantic模型
 │   │   └── services/            # 故障注入服务
-│   │       └── fault_injector.py
+│   │       ├── fault_injector.py
+│   │       └── drill_executor.py  # 演练执行器
 │   ├── tests/                   # 测试用例（20个）
 │   ├── requirements.txt
 │   ├── pytest.ini
@@ -55,7 +59,8 @@ swat-fault-inject/
 │   ├── src/
 │   │   ├── pages/               # 页面组件
 │   │   │   ├── DatabaseConfig.jsx
-│   │   │   └── FaultScenarios.jsx
+│   │   │   ├── FaultScenarios.jsx
+│   │   │   └── DrillManagement.jsx  # 演练管理页面
 │   │   ├── components/          # 布局组件
 │   │   │   └── Layout.jsx
 │   │   ├── api/                 # API封装
@@ -139,9 +144,10 @@ npm run dev
 
 1. 在"数据库配置"页面选择数据库类型并添加连接配置
 2. 点击"测试连接"验证配置是否正确
-3. 在"故障场景"页面创建或使用已有的故障场景
-4. 点击"执行注入"选择目标数据库开始故障注入
-5. 在注入历史记录中查看状态和日志
+3. 在"故障场景"页面创建或使用已有的故障场景（可配置前置准备和清理脚本）
+4. **演练管理**：组合多个场景创建演练，选择顺序或并行执行
+5. 点击"启动演练"开始批量故障注入测试
+6. 在演练详情中查看实时进度、步骤状态和执行日志
 
 ## 故障场景类型
 

@@ -2,6 +2,68 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.6.1] - 2026-05-11
+
+### Fixed
+
+- **故障注入历史信息显示不全**
+  - API `/api/injection/history` 现返回 `scenario_name` 和 `db_config_name`
+  - 前端注入历史表格正确显示场景名称和数据库配置名称
+  - 新增数据库关系映射查询
+
+- **演练管理页面加载数据失败**
+  - 数据库 `drills` 表缺少 `created_at` 和 `updated_at` 列
+  - 新增数据库修复脚本自动添加缺失列
+
+- **统计图标旋转问题优化**
+  - "正在运行"/"正在执行"图标 spin 属性改为动态判断
+  - 仅在有运行任务时图标旋转，静止任务不转圈
+
+### Changed
+
+- 前端 `FaultScenarios.jsx` 和 `DrillManagement.jsx` 统计卡片图标优化
+
+## [1.6.0] - 2026-05-10
+
+### Added
+
+- **演练管理功能**
+  - 组合多个故障场景进行批量测试
+  - 支持顺序执行和并行执行两种模式
+  - 每个演练步骤独立跟踪进度和状态
+  - 实时显示演练进度、当前阶段和执行日志
+  - 支持启动、停止、查看演练详情
+
+- **故障场景增强**
+  - 新增前置准备脚本 (`setup_scripts`)：在故障注入前执行环境准备
+  - 新增清理环境脚本 (`cleanup_scripts`)：故障注入后自动清理测试数据
+  - 新增脚本超时配置 (`setup_timeout`, `cleanup_timeout`)
+  - 支持 SQL 和 Shell 两种脚本类型
+
+- **新增数据表**
+  - `drills` 表：演练记录
+  - `drill_steps` 表：演练步骤详情
+
+- **新增API接口**
+  - `POST /api/drill/create` 创建演练
+  - `POST /api/drill/start/{id}` 启动演练
+  - `POST /api/drill/stop/{id}` 停止演练
+  - `GET /api/drill/status/{id}` 获取演练状态和进度
+  - `GET /api/drill/list` 获取演练列表
+  - `GET /api/drill/step-status/{id}` 获取步骤状态
+  - `DELETE /api/drill/{id}` 删除演练
+
+- **新增前端页面**
+  - 演练管理页面 (`DrillManagement.jsx`)
+  - 演练创建表单（支持场景选择和排序）
+  - 演练详情弹窗（显示步骤进度和日志）
+
+### Changed
+
+- 版本号升级至 1.6.0
+- 前端菜单新增"演练管理"入口
+- 前端 Layout 组件添加 RocketOutlined 图标
+
 ## [1.5.1] - 2026-05-09
 
 ### Fixed

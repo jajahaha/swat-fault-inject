@@ -1,9 +1,10 @@
 import React from 'react'
-import { Layout as AntLayout, Menu } from 'antd'
-import { DatabaseOutlined, ThunderboltOutlined } from '@ant-design/icons'
+import { Layout as AntLayout, Menu, Typography } from 'antd'
+import { DatabaseOutlined, ThunderboltOutlined, RocketOutlined } from '@ant-design/icons'
 import { useNavigate, useLocation } from 'react-router-dom'
 
 const { Header, Content, Sider } = AntLayout
+const { Text } = Typography
 
 function Layout({ children }) {
   const navigate = useNavigate()
@@ -20,6 +21,11 @@ function Layout({ children }) {
       icon: <ThunderboltOutlined />,
       label: '故障场景',
     },
+    {
+      key: '/drill',
+      icon: <RocketOutlined />,
+      label: '演练管理',
+    },
   ]
 
   return (
@@ -28,30 +34,72 @@ function Layout({ children }) {
         style={{
           display: 'flex',
           alignItems: 'center',
-          background: '#001529',
+          justifyContent: 'space-between',
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          padding: '0 24px',
+          height: '64px',
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
         }}
       >
-        <div style={{ color: '#fff', fontSize: '20px', fontWeight: 'bold' }}>
-          SWAT Fault Inject Platform
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <ThunderboltOutlined style={{ fontSize: '28px', color: '#fff' }} />
+          <Text style={{ color: '#fff', fontSize: '20px', fontWeight: 600 }}>
+            SWAT Fault Inject
+          </Text>
+        </div>
+        <div style={{ 
+          background: 'rgba(255, 255, 255, 0.2)',
+          padding: '4px 12px',
+          borderRadius: '12px',
+          color: '#fff',
+          fontSize: '12px',
+          fontWeight: 500,
+        }}>
+          v1.6.0
         </div>
       </Header>
       <AntLayout>
-        <Sider width={200} theme="light">
+        <Sider 
+          width={220} 
+          style={{
+            background: '#fff',
+            boxShadow: '2px 0 8px rgba(0, 0, 0, 0.05)',
+          }}
+        >
+          <div style={{ 
+            padding: '16px 24px',
+            borderBottom: '1px solid #f0f0f0',
+          }}>
+            <Text type="secondary" style={{ fontSize: '12px', fontWeight: 500 }}>
+              功能模块
+            </Text>
+          </div>
           <Menu
             mode="inline"
             selectedKeys={[location.pathname]}
-            items={menuItems}
+            items={menuItems.map(item => ({
+              ...item,
+              style: {
+                margin: '4px 8px',
+                borderRadius: '8px',
+                height: '48px',
+                lineHeight: '48px',
+                transition: 'all 0.3s ease',
+              },
+            }))}
             onClick={({ key }) => navigate(key)}
-            style={{ height: '100%', borderRight: 0 }}
+            style={{
+              height: '100%',
+              borderRight: 0,
+              padding: '8px 0',
+              background: 'transparent',
+            }}
           />
-          <div style={{ padding: '16px', textAlign: 'center', color: '#999' }}>
-            v1.5.1
-          </div>
         </Sider>
         <Content
           style={{
             padding: '24px',
-            background: '#f5f5f5',
+            background: 'linear-gradient(180deg, #f5f7fa 0%, #f0f2f5 100%)',
             minHeight: 'calc(100vh - 64px)',
           }}
         >

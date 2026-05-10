@@ -31,3 +31,14 @@ export const injectionApi = {
   getStatus: (recordId) => api.get(`/injection/status/${recordId}`),
   getRecords: () => api.get('/injection/records'),
 }
+
+// 新增：演练 API
+export const drillApi = {
+  create: (data) => api.post('/drill/create', data),
+  start: (drillId) => api.post(`/drill/start/${drillId}`),
+  stop: (drillId) => api.post(`/drill/stop/${drillId}`),
+  getStatus: (drillId) => api.get(`/drill/status/${drillId}`),
+  getList: () => api.get('/drill/list'),
+  getStepStatus: (stepId) => api.get(`/drill/step-status/${stepId}`),
+  delete: (drillId) => api.delete(`/drill/${drillId}`),
+}

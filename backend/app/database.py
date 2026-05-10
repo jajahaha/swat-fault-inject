@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.orm import sessionmaker, declarative_base, relationship
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, select
 from datetime import datetime
 import json
@@ -53,6 +53,11 @@ class FaultScenario(Base):
     type = Column(String(50), nullable=False)
     description = Column(Text)
     config = Column(Text, nullable=False)
+    # 新增：前置准备脚本和清理环境脚本
+    setup_scripts = Column(Text, nullable=True)  # JSON array of setup scripts
+    cleanup_scripts = Column(Text, nullable=True)  # JSON array of cleanup scripts
+    setup_timeout = Column(Integer, nullable=True, default=60)  # 前置准备超时（秒）
+    cleanup_timeout = Column(Integer, nullable=True, default=30)  # 清理超时（秒）
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -63,8 +68,82 @@ class FaultScenario(Base):
             "type": self.type,
             "description": self.description,
             "config": json.loads(self.config) if self.config else {},
+            "setup_scripts": json.loads(self.setup_scripts) if self.setup_scripts else [],
+            "cleanup_scripts": json.loads(self.cleanup_scripts) if self.cleanup_scripts else [],
+            "setup_timeout": self.setup_timeout or 60,
+            "cleanup_timeout": self.cleanup_timeout or 30,
             "created_at": self.created_at.isoformat() + "Z" if self.created_at else None,
             "updated_at": self.updated_at.isoformat() + "Z" if self.updated_at else None,
+        }
+
+
+class Drill(Base):
+    """演练表 - 支持多场景组合执行"""
+    __tablename__ = "drills"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(100), nullable=False)
+    description = Column(Text)
+    execution_mode = Column(String(20), nullable=False, default="sequential")  # sequential/parallel
+    db_config_id = Column(Integer, ForeignKey("database_configs.id"), nullable=False)
+    status = Column(String(20), nullable=False, default="pending")  # pending/preparing/running/cleaning/completed/failed
+    total_steps = Column(Integer, nullable=False, default=0)
+    current_step = Column(Integer, nullable=True, default=0)
+    progress_percent = Column(Integer, nullable=True, default=0)
+    current_phase = Column(String(20), nullable=True)  # preparing/injecting/cleaning
+    started_at = Column(DateTime)
+    ended_at = Column(DateTime)
+    log = Column(Text)
+    created_at = Column(DateTime, default=datetime.utcnow)  # 添加创建时间字段
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # 添加更新时间字段
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "description": self.description,
+            "execution_mode": self.execution_mode,
+            "db_config_id": self.db_config_id,
+            "status": self.status,
+            "total_steps": self.total_steps,
+            "current_step": self.current_step,
+            "progress_percent": self.progress_percent,
+            "current_phase": self.current_phase,
+            "started_at": self.started_at.isoformat() + "Z" if self.started_at else None,
+            "ended_at": self.ended_at.isoformat() + "Z" if self.ended_at else None,
+            "log": self.log,
+            "created_at": self.created_at.isoformat() + "Z" if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() + "Z" if self.updated_at else None,
+        }
+
+
+class DrillStep(Base):
+    """演练步骤表 - 每个步骤对应一个故障场景"""
+    __tablename__ = "drill_steps"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    drill_id = Column(Integer, ForeignKey("drills.id"), nullable=False)
+    step_order = Column(Integer, nullable=False)
+    scenario_id = Column(Integer, ForeignKey("fault_scenarios.id"), nullable=False)
+    status = Column(String(20), nullable=False, default="pending")  # pending/preparing/injecting/cleaning/completed/failed
+    progress_percent = Column(Integer, nullable=True, default=0)
+    current_phase = Column(String(20), nullable=True)  # preparing/injecting/cleaning
+    started_at = Column(DateTime)
+    ended_at = Column(DateTime)
+    log = Column(Text)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "drill_id": self.drill_id,
+            "step_order": self.step_order,
+            "scenario_id": self.scenario_id,
+            "status": self.status,
+            "progress_percent": self.progress_percent,
+            "current_phase": self.current_phase,
+            "started_at": self.started_at.isoformat() + "Z" if self.started_at else None,
+            "ended_at": self.ended_at.isoformat() + "Z" if self.ended_at else None,
+            "log": self.log,
         }
 
 
@@ -78,6 +157,10 @@ class InjectionRecord(Base):
     started_at = Column(DateTime, nullable=False)
     ended_at = Column(DateTime)
     log = Column(Text)
+    
+    # Relationships for eager loading
+    scenario = relationship("FaultScenario", backref="injection_records")
+    db_config = relationship("DatabaseConfig", backref="injection_records")
 
     def to_dict(self):
         return {
