@@ -53,10 +53,13 @@ class FaultScenario(Base):
     type = Column(String(50), nullable=False)
     description = Column(Text)
     config = Column(Text, nullable=False)
-    # 新增：前置准备脚本和清理环境脚本
+    # 三阶段脚本配置
     setup_scripts = Column(Text, nullable=True)  # JSON array of setup scripts
+    run_scripts = Column(Text, nullable=True)  # JSON array of run scripts（新增）
     cleanup_scripts = Column(Text, nullable=True)  # JSON array of cleanup scripts
+    # 超时配置
     setup_timeout = Column(Integer, nullable=True, default=60)  # 前置准备超时（秒）
+    run_timeout = Column(Integer, nullable=True, default=120)  # 运行环节超时（秒）（新增）
     cleanup_timeout = Column(Integer, nullable=True, default=30)  # 清理超时（秒）
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -68,9 +71,13 @@ class FaultScenario(Base):
             "type": self.type,
             "description": self.description,
             "config": json.loads(self.config) if self.config else {},
+            # 三阶段脚本
             "setup_scripts": json.loads(self.setup_scripts) if self.setup_scripts else [],
+            "run_scripts": json.loads(self.run_scripts) if self.run_scripts else [],
             "cleanup_scripts": json.loads(self.cleanup_scripts) if self.cleanup_scripts else [],
+            # 超时配置
             "setup_timeout": self.setup_timeout or 60,
+            "run_timeout": self.run_timeout or 120,
             "cleanup_timeout": self.cleanup_timeout or 30,
             "created_at": self.created_at.isoformat() + "Z" if self.created_at else None,
             "updated_at": self.updated_at.isoformat() + "Z" if self.updated_at else None,

@@ -7,6 +7,7 @@ from app.api.database_config import router as db_config_router
 from app.api.fault_scenarios import router as fault_scenarios_router
 from app.api.injection import router as injection_router
 from app.api.drill import router as drill_router  # 新增：演练路由
+from app.api.scenario_import_export import router as scenario_io_router  # 新增：导入导出路由
 
 
 @asynccontextmanager
@@ -18,7 +19,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="SWAT Fault Inject Platform",
     description="Database fault injection platform for testing high-load scenarios",
-    version="1.6.0",  # 版本升级
+    version="1.6.2",  # 版本升级
     lifespan=lifespan,
 )
 
@@ -34,6 +35,7 @@ app.include_router(db_config_router)
 app.include_router(fault_scenarios_router)
 app.include_router(injection_router)
 app.include_router(drill_router)  # 新增：注册演练路由
+app.include_router(scenario_io_router)  # 新增：注册导入导出路由
 
 
 @app.get("/")

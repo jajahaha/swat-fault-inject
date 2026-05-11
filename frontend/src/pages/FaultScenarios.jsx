@@ -20,6 +20,7 @@ import {
   Typography,
   Divider,
   Alert,
+  Upload,
 } from 'antd'
 import {
   PlusOutlined,
@@ -32,8 +33,12 @@ import {
   FileTextOutlined,
   CheckCircleOutlined,
   LoadingOutlined,
+  UploadOutlined,
+  DownloadOutlined,
+  ExportOutlined,
+  ClockCircleOutlined,
 } from '@ant-design/icons'
-import { faultScenarioApi, injectionApi, databaseConfigApi } from '../api'
+import { faultScenarioApi, injectionApi, databaseConfigApi, scenarioIOApi } from '../api'
 
 const { TextArea } = Input
 const { Text } = Typography
@@ -64,6 +69,8 @@ function FaultScenarios() {
   const [selectedLog, setSelectedLog] = useState('')
   const [editingScenario, setEditingScenario] = useState(null)
   const [selectedScenario, setSelectedScenario] = useState(null)
+  const [selectedRowKeys, setSelectedRowKeys] = useState([])  // 批量选择
+  const [importModalVisible, setImportModalVisible] = useState(false)  // 导入弹窗
   const [form] = Form.useForm()
   const [injectForm] = Form.useForm()
 
@@ -88,6 +95,71 @@ function FaultScenarios() {
     setLoading(false)
   }
 
+  // 导入场景
+  const handleImport = async (file) => {
+    try {
+      const res = await scenarioIOApi.import(file)
+      message.success(res.data.message)
+      loadData()
+      setImportModalVisible(false)
+    } catch (error) {
+      const detail = error.response?.data?.detail
+      if (typeof detail === 'object' && detail.errors) {
+        message.error('导入失败: ' + detail.errors.join(', '))
+      } else {
+        message.error('导入失败: ' + (detail || error.message))
+      }
+    }
+    return false  // 阻止默认上传行为
+  }
+
+  // 导出单个场景
+  const handleExport = async (scenarioId) => {
+    try {
+      const res = await scenarioIOApi.export(scenarioId)
+      downloadFile(res.data, `scenario_${scenarioId}.yaml`)
+      message.success('导出成功')
+    } catch (error) {
+      message.error('导出失败')
+    }
+  }
+
+  // 批量导出选中场景
+  const handleExportSelected = async () => {
+    if (selectedRowKeys.length === 0) {
+      message.warning('请先选择要导出的场景')
+      return
+    }
+    try {
+      const res = await scenarioIOApi.exportBatch(selectedRowKeys)
+      downloadFile(res.data, 'scenarios_export.zip')
+      message.success(`已导出 ${selectedRowKeys.length} 个场景`)
+    } catch (error) {
+      message.error('导出失败')
+    }
+  }
+
+  // 导出所有场景
+  const handleExportAll = async () => {
+    try {
+      const res = await scenarioIOApi.exportAll()
+      downloadFile(res.data, 'all_scenarios.zip')
+      message.success(`已导出所有场景`)
+    } catch (error) {
+      message.error('导出失败')
+    }
+  }
+
+  // 下载文件辅助函数
+  const downloadFile = (blob, filename) => {
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    a.click()
+    window.URL.revokeObjectURL(url)
+  }
+
   const handleCreate = () => {
     setEditingScenario(null)
     form.resetFields()
@@ -99,6 +171,14 @@ function FaultScenarios() {
         interval_ms: 100,
         query_template: 'SELECT count(*) FROM pg_catalog.pg_class a, pg_catalog.pg_class b, pg_catalog.pg_class c WHERE a.oid = b.oid AND b.oid = c.oid',
       },
+      // 三阶段超时默认值
+      setup_timeout: 60,
+      run_timeout: 120,
+      cleanup_timeout: 30,
+      // 空脚本列表
+      setup_scripts: [],
+      run_scripts: [],
+      cleanup_scripts: [],
     })
     setModalVisible(true)
   }
@@ -110,6 +190,14 @@ function FaultScenarios() {
       type: record.type,
       description: record.description,
       config: record.config,
+      // 三阶段脚本
+      setup_scripts: record.setup_scripts || [],
+      run_scripts: record.run_scripts || [],
+      cleanup_scripts: record.cleanup_scripts || [],
+      // 超时配置
+      setup_timeout: record.setup_timeout || 60,
+      run_timeout: record.run_timeout || 120,
+      cleanup_timeout: record.cleanup_timeout || 30,
     })
     setModalVisible(true)
   }
@@ -268,6 +356,12 @@ function FaultScenarios() {
           </Button>
           <Button
             size="small"
+            icon={<DownloadOutlined />}
+            onClick={() => handleExport(record.id)}
+            title="导出"
+          />
+          <Button
+            size="small"
             icon={<EditOutlined />}
             onClick={() => handleEdit(record)}
           />
@@ -383,7 +477,7 @@ function FaultScenarios() {
             <Statistic
               title="正在运行"
               value={runningCount}
-              prefix={<LoadingOutlined spin={runningCount > 0} style={{ color: '#1890ff' }} />}
+              prefix={runningCount > 0 ? <LoadingOutlined spin style={{ color: '#1890ff' }} /> : <ClockCircleOutlined style={{ color: '#1890ff' }} />}
               valueStyle={{ color: '#1890ff', fontWeight: 600 }}
             />
           </Card>
@@ -422,19 +516,40 @@ function FaultScenarios() {
         style={{ borderRadius: '12px', boxShadow: '0 2px 12px rgba(0,0,0,0.08)', marginBottom: 24 }}
         title={<span><ThunderboltOutlined style={{ color: '#667eea', marginRight: 8 }} />故障场景管理</span>}
         extra={
-          <Button 
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={handleCreate}
-            style={{
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              border: 'none',
-              borderRadius: '8px',
-              height: '36px',
-            }}
-          >
-            新建场景
-          </Button>
+          <Space>
+            <Button 
+              icon={<UploadOutlined />}
+              onClick={() => setImportModalVisible(true)}
+            >
+              导入
+            </Button>
+            <Button 
+              icon={<DownloadOutlined />}
+              onClick={handleExportSelected}
+              disabled={selectedRowKeys.length === 0}
+            >
+              导出选中 ({selectedRowKeys.length})
+            </Button>
+            <Button 
+              icon={<ExportOutlined />}
+              onClick={handleExportAll}
+            >
+              导出全部
+            </Button>
+            <Button 
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={handleCreate}
+              style={{
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                border: 'none',
+                borderRadius: '8px',
+                height: '36px',
+              }}
+            >
+              新建场景
+            </Button>
+          </Space>
         }
       >
         <Table
@@ -443,8 +558,41 @@ function FaultScenarios() {
           rowKey="id"
           loading={loading}
           pagination={false}
+          rowSelection={{
+            selectedRowKeys,
+            onChange: setSelectedRowKeys,
+          }}
         />
       </Card>
+
+      {/* 导入场景弹窗 */}
+      <Modal
+        title="导入故障场景"
+        open={importModalVisible}
+        onCancel={() => setImportModalVisible(false)}
+        footer={null}
+        width={500}
+      >
+        <Alert
+          message="导入说明"
+          description="上传 YAML 格式的故障场景配置文件，支持单个或多个文件导入。"
+          type="info"
+          showIcon
+          style={{ marginBottom: 16 }}
+        />
+        <Upload.Dragger
+          accept=".yaml,.yml"
+          beforeUpload={handleImport}
+          showUploadList={false}
+          multiple
+        >
+          <p className="ant-upload-drag-icon">
+            <UploadOutlined />
+          </p>
+          <p className="ant-upload-text">点击或拖拽 YAML 文件到此区域</p>
+          <p className="ant-upload-hint">支持单个或批量导入，文件格式: .yaml 或 .yml</p>
+        </Upload.Dragger>
+      </Modal>
 
       {/* 注入历史卡片 */}
       <Card
@@ -470,7 +618,7 @@ function FaultScenarios() {
         open={modalVisible}
         onOk={handleSubmit}
         onCancel={() => setModalVisible(false)}
-        width={700}
+        width={900}
         okButtonProps={{
           style: {
             background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
@@ -479,44 +627,212 @@ function FaultScenarios() {
         }}
       >
         <Form form={form} layout="vertical">
-          <Form.Item
-            name="name"
-            label="场景名称"
-            rules={[{ required: true, message: '请输入场景名称' }]}
-          >
-            <Input placeholder="例如: 高并发CPU压力测试" />
-          </Form.Item>
-          <Form.Item
-            name="type"
-            label="故障类型"
-            rules={[{ required: true, message: '请选择故障类型' }]}
-          >
-            <Select>
-              {Object.entries(SCENARIO_TYPE_CONFIG).map(([key, val]) => (
-                <Select.Option key={key} value={key}>
-                  <Tag style={{ background: val.bg, color: val.color, border: `1px solid ${val.color}` }}>
-                    {val.label}
-                  </Tag>
-                </Select.Option>
-              ))}
-            </Select>
-          </Form.Item>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name="name"
+                label="场景名称"
+                rules={[{ required: true, message: '请输入场景名称' }]}
+              >
+                <Input placeholder="例如: 高并发CPU压力测试" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name="type"
+                label="故障类型"
+                rules={[{ required: true, message: '请选择故障类型' }]}
+              >
+                <Select>
+                  {Object.entries(SCENARIO_TYPE_CONFIG).map(([key, val]) => (
+                    <Select.Option key={key} value={key}>
+                      <Tag style={{ background: val.bg, color: val.color, border: `1px solid ${val.color}` }}>
+                        {val.label}
+                      </Tag>
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
           <Form.Item name="description" label="描述">
             <TextArea rows={2} placeholder="场景描述" />
           </Form.Item>
-          <Divider>故障参数配置</Divider>
-          <Form.Item name={['config', 'concurrency']} label="并发连接数">
-            <InputNumber min={1} max={500} style={{ width: '100%' }} />
-          </Form.Item>
-          <Form.Item name={['config', 'duration_seconds']} label="持续时间(秒)">
-            <InputNumber min={1} max={3600} style={{ width: '100%' }} />
-          </Form.Item>
-          <Form.Item name={['config', 'interval_ms']} label="查询间隔(毫秒)">
-            <InputNumber min={10} max={10000} style={{ width: '100%' }} />
-          </Form.Item>
+
+          <Divider orientation="left">⚡ 运行环节参数（默认故障注入）</Divider>
+          <Alert 
+            message="如果未配置自定义脚本，将使用以下参数进行默认故障注入"
+            type="info"
+            showIcon
+            style={{ marginBottom: 16 }}
+          />
+          <Row gutter={16}>
+            <Col span={8}>
+              <Form.Item name={['config', 'concurrency']} label="并发连接数">
+                <InputNumber min={1} max={500} style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item name={['config', 'duration_seconds']} label="持续时间(秒)">
+                <InputNumber min={1} max={3600} style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item name={['config', 'interval_ms']} label="查询间隔(毫秒)">
+                <InputNumber min={10} max={10000} style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
           <Form.Item name={['config', 'query_template']} label="SQL查询模板">
-            <TextArea rows={4} placeholder="SELECT ..." />
+            <TextArea rows={3} placeholder="SELECT ..." />
           </Form.Item>
+
+          <Divider orientation="left">📋 前置环节脚本</Divider>
+          <Form.Item name="setup_timeout" label="前置环节超时(秒)">
+            <InputNumber min={10} max={300} style={{ width: 200 }} />
+          </Form.Item>
+          <Form.List name="setup_scripts">
+            {(fields, { add, remove }) => (
+              <>
+                {fields.map(({ key, name, ...restField }) => (
+                  <Card key={key} size="small" style={{ marginBottom: 8 }} title={`前置脚本 ${name + 1}`}>
+                    <Row gutter={16}>
+                      <Col span={6}>
+                        <Form.Item {...restField} name={[name, 'type']} label="类型">
+                          <Select>
+                            <Select.Option value="sql">SQL</Select.Option>
+                            <Select.Option value="shell">Shell</Select.Option>
+                          </Select>
+                        </Form.Item>
+                      </Col>
+                      <Col span={6}>
+                        <Form.Item {...restField} name={[name, 'timeout']} label="超时(秒)">
+                          <InputNumber min={5} max={120} style={{ width: '100%' }} />
+                        </Form.Item>
+                      </Col>
+                      <Col span={12}>
+                        <Form.Item {...restField} name={[name, 'description']} label="描述">
+                          <Input placeholder="脚本用途说明" />
+                        </Form.Item>
+                      </Col>
+                    </Row>
+                    <Form.Item {...restField} name={[name, 'content']} label="脚本内容">
+                      <TextArea rows={3} placeholder="SQL语句或Shell命令" />
+                    </Form.Item>
+                    <Button type="link" danger onClick={() => remove(name)} icon={<DeleteOutlined />}>
+                      删除脚本
+                    </Button>
+                  </Card>
+                ))}
+                <Button type="dashed" onClick={() => add({ type: 'sql', timeout: 30 })} block icon={<PlusOutlined />}>
+                  添加前置脚本
+                </Button>
+              </>
+            )}
+          </Form.List>
+
+          <Divider orientation="left">🔥 运行环节脚本（可选，替代默认注入）</Divider>
+          <Alert 
+            message="配置运行脚本后，将替代默认故障注入参数，执行自定义脚本"
+            type="warning"
+            showIcon
+            style={{ marginBottom: 16 }}
+          />
+          <Form.Item name="run_timeout" label="运行环节超时(秒)">
+            <InputNumber min={10} max={600} style={{ width: 200 }} />
+          </Form.Item>
+          <Form.List name="run_scripts">
+            {(fields, { add, remove }) => (
+              <>
+                {fields.map(({ key, name, ...restField }) => (
+                  <Card key={key} size="small" style={{ marginBottom: 8, background: '#fff7e6' }} title={`运行脚本 ${name + 1}`}>
+                    <Row gutter={16}>
+                      <Col span={6}>
+                        <Form.Item {...restField} name={[name, 'type']} label="类型">
+                          <Select>
+                            <Select.Option value="sql">SQL</Select.Option>
+                            <Select.Option value="shell">Shell</Select.Option>
+                            <Select.Option value="stress">Stress (压力测试)</Select.Option>
+                          </Select>
+                        </Form.Item>
+                      </Col>
+                      <Col span={6}>
+                        <Form.Item {...restField} name={[name, 'timeout']} label="超时(秒)">
+                          <InputNumber min={10} max={300} style={{ width: '100%' }} />
+                        </Form.Item>
+                      </Col>
+                      <Col span={6}>
+                        <Form.Item {...restField} name={[name, 'iterations']} label="执行次数">
+                          <InputNumber min={1} max={1000} style={{ width: '100%' }} />
+                        </Form.Item>
+                      </Col>
+                      <Col span={6}>
+                        <Form.Item {...restField} name={[name, 'interval_ms']} label="间隔(毫秒)">
+                          <InputNumber min={0} max={10000} style={{ width: '100%' }} />
+                        </Form.Item>
+                      </Col>
+                    </Row>
+                    <Form.Item {...restField} name={[name, 'description']} label="描述">
+                      <Input placeholder="脚本用途说明" />
+                    </Form.Item>
+                    <Form.Item {...restField} name={[name, 'content']} label="脚本内容">
+                      <TextArea rows={3} placeholder="SQL语句、Shell命令或压力测试参数" />
+                    </Form.Item>
+                    <Button type="link" danger onClick={() => remove(name)} icon={<DeleteOutlined />}>
+                      删除脚本
+                    </Button>
+                  </Card>
+                ))}
+                <Button type="dashed" onClick={() => add({ type: 'sql', timeout: 60, iterations: 1, interval_ms: 100 })} block icon={<PlusOutlined />}>
+                  添加运行脚本
+                </Button>
+              </>
+            )}
+          </Form.List>
+
+          <Divider orientation="left">🧹 清理环节脚本</Divider>
+          <Form.Item name="cleanup_timeout" label="清理环节超时(秒)">
+            <InputNumber min={5} max={60} style={{ width: 200 }} />
+          </Form.Item>
+          <Form.List name="cleanup_scripts">
+            {(fields, { add, remove }) => (
+              <>
+                {fields.map(({ key, name, ...restField }) => (
+                  <Card key={key} size="small" style={{ marginBottom: 8, background: '#f6ffed' }} title={`清理脚本 ${name + 1}`}>
+                    <Row gutter={16}>
+                      <Col span={6}>
+                        <Form.Item {...restField} name={[name, 'type']} label="类型">
+                          <Select>
+                            <Select.Option value="sql">SQL</Select.Option>
+                            <Select.Option value="shell">Shell</Select.Option>
+                          </Select>
+                        </Form.Item>
+                      </Col>
+                      <Col span={6}>
+                        <Form.Item {...restField} name={[name, 'timeout']} label="超时(秒)">
+                          <InputNumber min={5} max={60} style={{ width: '100%' }} />
+                        </Form.Item>
+                      </Col>
+                      <Col span={12}>
+                        <Form.Item {...restField} name={[name, 'description']} label="描述">
+                          <Input placeholder="脚本用途说明" />
+                        </Form.Item>
+                      </Col>
+                    </Row>
+                    <Form.Item {...restField} name={[name, 'content']} label="脚本内容">
+                      <TextArea rows={3} placeholder="SQL语句或Shell命令" />
+                    </Form.Item>
+                    <Button type="link" danger onClick={() => remove(name)} icon={<DeleteOutlined />}>
+                      删除脚本
+                    </Button>
+                  </Card>
+                ))}
+                <Button type="dashed" onClick={() => add({ type: 'sql', timeout: 10 })} block icon={<PlusOutlined />}>
+                  添加清理脚本
+                </Button>
+              </>
+            )}
+          </Form.List>
         </Form>
       </Modal>
 

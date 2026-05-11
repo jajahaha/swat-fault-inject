@@ -42,3 +42,37 @@ export const drillApi = {
   getStepStatus: (stepId) => api.get(`/drill/step-status/${stepId}`),
   delete: (drillId) => api.delete(`/drill/${drillId}`),
 }
+
+// 新增：场景导入导出 API
+export const scenarioIOApi = {
+  // 导入单个场景
+  import: (file) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    return api.post('/fault-scenarios/import', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+  },
+  // 批量导入
+  importBatch: (files) => {
+    const formData = new FormData()
+    files.forEach(file => formData.append('files', file))
+    return api.post('/fault-scenarios/import-batch', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+  },
+  // 导出单个场景
+  export: (scenarioId) => api.get(`/fault-scenarios/export/${scenarioId}`, { responseType: 'blob' }),
+  // 批量导出
+  exportBatch: (scenarioIds) => api.post('/fault-scenarios/export-batch', scenarioIds, { responseType: 'blob' }),
+  // 导出所有
+  exportAll: () => api.get('/fault-scenarios/export-all', { responseType: 'blob' }),
+  // 验证 YAML
+  validate: (file) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    return api.post('/fault-scenarios/validate', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+  },
+}

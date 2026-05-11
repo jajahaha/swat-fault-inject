@@ -41,9 +41,13 @@ async def create_fault_scenario(scenario: FaultScenarioCreate):
             type=scenario.type,
             description=scenario.description,
             config=json.dumps(scenario.config),
+            # 三阶段脚本
             setup_scripts=json.dumps([s.dict() for s in scenario.setup_scripts]) if scenario.setup_scripts else None,
+            run_scripts=json.dumps([s.dict() for s in scenario.run_scripts]) if scenario.run_scripts else None,
             cleanup_scripts=json.dumps([s.dict() for s in scenario.cleanup_scripts]) if scenario.cleanup_scripts else None,
+            # 超时配置
             setup_timeout=scenario.setup_timeout,
+            run_timeout=scenario.run_timeout,
             cleanup_timeout=scenario.cleanup_timeout,
         )
         session.add(fault_scenario)
@@ -64,8 +68,8 @@ async def update_fault_scenario(scenario_id: int, scenario: FaultScenarioUpdate)
 
         update_data = scenario.dict(exclude_unset=True)
         for key, value in update_data.items():
-            if key in ("config", "setup_scripts", "cleanup_scripts") and value is not None:
-                if key == "setup_scripts" or key == "cleanup_scripts":
+            if key in ("config", "setup_scripts", "run_scripts", "cleanup_scripts") and value is not None:
+                if key in ("setup_scripts", "run_scripts", "cleanup_scripts"):
                     setattr(fault_scenario, key, json.dumps([s.dict() if hasattr(s, 'dict') else s for s in value]))
                 else:
                     setattr(fault_scenario, key, json.dumps(value))

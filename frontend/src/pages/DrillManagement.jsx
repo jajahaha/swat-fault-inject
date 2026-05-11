@@ -289,7 +289,7 @@ function DrillManagement() {
             <Text style={{ fontSize: '12px', color: '#8c8c8c' }}>
               步骤 {record.current_step || 0}/{record.total_steps}
             </Text>
-            {record.current_phase && getPhaseTag(record.current_phase)}
+            {['running', 'preparing', 'cleaning'].includes(record.status) && record.current_phase && getPhaseTag(record.current_phase)}
           </div>
         </div>
       )
@@ -375,7 +375,7 @@ function DrillManagement() {
           </Text>
           <Space>
             {getStatusTag(step.status)}
-            {phase && getPhaseTag(phase)}
+            {['running', 'preparing', 'cleaning'].includes(step.status) && phase && getPhaseTag(phase)}
           </Space>
         </div>
         
@@ -405,7 +405,7 @@ function DrillManagement() {
         </div>
         
         {/* 阶段描述 */}
-        {phaseConfig && (
+        {phaseConfig && ['running', 'preparing', 'cleaning'].includes(step.status) && (
           <div style={{ marginTop: 12, padding: '8px 12px', background: '#fff', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ 
               display: 'inline-block', 
@@ -457,7 +457,7 @@ function DrillManagement() {
             <Statistic
               title="正在执行"
               value={runningCount}
-              prefix={<LoadingOutlined spin={runningCount > 0} style={{ color: '#1890ff' }} />}
+              prefix={runningCount > 0 ? <LoadingOutlined spin style={{ color: '#1890ff' }} /> : <ClockCircleOutlined style={{ color: '#1890ff' }} />}
               valueStyle={{ color: '#1890ff', fontWeight: 600 }}
             />
           </Card>
@@ -646,7 +646,9 @@ function DrillManagement() {
                 />
               </Descriptions.Item>
               <Descriptions.Item label="当前阶段">
-                {selectedDrill.current_phase ? getPhaseTag(selectedDrill.current_phase) : '-'}
+                {['running', 'preparing', 'cleaning'].includes(selectedDrill.status) && selectedDrill.current_phase
+                  ? getPhaseTag(selectedDrill.current_phase)
+                  : '-'}
               </Descriptions.Item>
               <Descriptions.Item label="开始时间">
                 <Text type="secondary">

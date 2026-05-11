@@ -2,6 +2,47 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.6.2] - 2026-05-11
+
+### Added
+
+- **故障场景 YAML 导入导出功能**
+  - 支持单个场景 YAML 文件导入导出
+  - 支持批量场景导入导出（ZIP 包）
+  - 支持导出所有场景
+  - YAML 格式验证 API
+  - 新增设计文档 `docs/scenario_script_spec.md`
+
+- **新增API接口**
+  - `POST /api/fault-scenarios/import` 导入单个场景
+  - `POST /api/fault-scenarios/import-batch` 批量导入场景
+  - `GET /api/fault-scenarios/export/{id}` 导出单个场景
+  - `POST /api/fault-scenarios/export-batch` 批量导出场景
+  - `GET /api/fault-scenarios/export-all` 导出所有场景
+  - `POST /api/fault-scenarios/validate` 验证 YAML 格式
+
+- **新增前端功能**
+  - 故障场景页面新增导入、导出选中、导出全部按钮
+  - 支持拖拽上传 YAML 文件
+  - 批量选择场景导出
+
+### Fixed
+
+- **演练进度显示问题**
+  - 演练完成后 `current_phase` 不再显示（清除为 null）
+  - 步骤完成后 `current_phase` 不再显示（清除为 null）
+  - 前端只在运行状态时显示阶段标签
+
+- **统计图标优化**
+  - "正在运行"/"正在执行"数量为 0 时显示静止时钟图标
+  - 数量 > 0 时显示转圈加载图标
+
+### Changed
+
+- 后端 `drill_executor.py` 完成时清除 current_phase
+- 前端 `FaultScenarios.jsx` 添加 ClockCircleOutlined 图标
+- 前端 `DrillManagement.jsx` 阶段标签显示逻辑优化
+
 ## [1.6.1] - 2026-05-11
 
 ### Fixed

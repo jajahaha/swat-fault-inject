@@ -81,11 +81,11 @@ class DrillExecutor:
 
             # 完成
             self.log("演练执行完成")
-            await self._update_drill_status("completed", 100)
+            await self._update_drill_status("completed", 100, current_phase=None)
 
         except Exception as e:
             self.log(f"演练执行失败: {str(e)}")
-            await self._update_drill_status("failed")
+            await self._update_drill_status("failed", current_phase=None)
         finally:
             self.running = False
             if self.drill_id in active_drills:
@@ -174,32 +174,47 @@ class DrillExecutor:
 
         if not setup_success:
             self.log(f"步骤 {step.step_order}: 前置准备失败")
-            await self._update_step_status(step_id, "failed")
+            await self._update_step_status(step_id, "failed", current_phase=None)
             return
 
         self.log(f"步骤 {step.step_order}: 前置准备完成")
         await self._update_step_progress(step_id, current_phase="injecting", progress_percent=20)
 
-        # 2. 故障注入阶段
+        # 2. 运行环节（故障注入核心）
         if self._stop_event.is_set():
             self.log(f"步骤 {step.step_order}: 收到停止信号")
-            await self._update_step_status(step_id, "stopped")
+            await self._update_step_status(step_id, "stopped", current_phase=None)
             return
 
-        self.log(f"步骤 {step.step_order}: 开始故障注入")
+        self.log(f"步骤 {step.step_order}: 开始运行环节")
         await self._update_step_progress(step_id, current_phase="injecting", progress_percent=20)
 
-        inject_success = await self._execute_fault_injection(
-            step_id,
-            scenario_config,
-            scenario_config.get("setup_timeout", 60)
-        )
-
-        if not inject_success:
-            self.log(f"步骤 {step.step_order}: 故障注入失败")
-            # 即使注入失败，也尝试清理环境
+        # 检查是否有自定义运行脚本
+        run_scripts = scenario_config.get("run_scripts", [])
+        if run_scripts:
+            # 使用自定义运行脚本
+            self.log(f"步骤 {step.step_order}: 使用自定义运行脚本")
+            run_success = await self._execute_scripts(
+                step_id,
+                run_scripts,
+                "run",
+                scenario_config.get("run_timeout", 120)
+            )
         else:
-            self.log(f"步骤 {step.step_order}: 故障注入完成")
+            # 使用默认故障注入（基于 config 参数）
+            self.log(f"步骤 {step.step_order}: 使用默认故障注入")
+            inject_success = await self._execute_fault_injection(
+                step_id,
+                scenario_config,
+                scenario_config.get("run_timeout", 120)
+            )
+            run_success = inject_success
+
+        if not run_success:
+            self.log(f"步骤 {step.step_order}: 运行环节失败")
+            # 即使失败，也尝试清理环境
+        else:
+            self.log(f"步骤 {step.step_order}: 运行环节完成")
             await self._update_step_progress(step_id, current_phase="cleaning", progress_percent=80)
 
         # 3. 清理环境阶段
@@ -215,10 +230,10 @@ class DrillExecutor:
 
         if cleanup_success:
             self.log(f"步骤 {step.step_order}: 清理环境完成")
-            await self._update_step_status(step_id, "completed", progress_percent=100)
+            await self._update_step_status(step_id, "completed", current_phase=None, progress_percent=100)
         else:
             self.log(f"步骤 {step.step_order}: 清理环境失败（环境可能残留）")
-            await self._update_step_status(step_id, "completed_with_cleanup_failed", progress_percent=100)
+            await self._update_step_status(step_id, "completed_with_cleanup_failed", current_phase=None, progress_percent=100)
 
     async def _execute_scripts(self, step_id: int, scripts: List[Dict], phase: str, timeout: int) -> bool:
         """执行脚本列表（前置准备或清理环境）"""
@@ -426,7 +441,7 @@ class DrillExecutor:
         self._stop_event.set()
 
         # 更新状态
-        await self._update_drill_status("stopped")
+        await self._update_drill_status("stopped", current_phase=None)
 
     def log(self, message: str):
         """记录日志"""
@@ -435,7 +450,7 @@ class DrillExecutor:
         self.log_lines.append(line)
         print(line)  # 同时打印到控制台
 
-    async def _update_drill_status(self, status: str, progress_percent: Optional[int] = None):
+    async def _update_drill_status(self, status: str, progress_percent: Optional[int] = None, current_phase: Optional[str] = None):
         """更新演练状态"""
         async with async_session() as session:
             result = await session.execute(
@@ -446,6 +461,8 @@ class DrillExecutor:
                 drill.status = status
                 if progress_percent is not None:
                     drill.progress_percent = progress_percent
+                if current_phase is not None:
+                    drill.current_phase = current_phase
                 drill.ended_at = datetime.utcnow()
                 drill.log = "\n".join(self.log_lines)
                 await session.commit()

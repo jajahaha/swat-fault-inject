@@ -52,6 +52,17 @@ class SetupScript(BaseModel):
     description: Optional[str] = None
     content: str
     timeout: int = 30  # 超时时间（秒）
+    continue_on_error: bool = False  # 是否在失败时继续
+
+
+class RunScript(BaseModel):
+    """运行环节脚本（故障注入核心）"""
+    type: str = "sql"  # sql / shell / stress
+    description: Optional[str] = None
+    content: str
+    timeout: int = 60  # 超时时间（秒）
+    iterations: int = 1  # 执行次数（仅对 shell/sql 有效）
+    interval_ms: int = 100  # 间隔毫秒（仅对 stress 有效）
 
 
 class CleanupScript(BaseModel):
@@ -60,6 +71,7 @@ class CleanupScript(BaseModel):
     description: Optional[str] = None
     content: str
     timeout: int = 10  # 超时时间（秒）
+    continue_on_error: bool = True  # 清理环节默认失败继续
 
 
 class FaultScenarioCreate(BaseModel):
@@ -67,10 +79,14 @@ class FaultScenarioCreate(BaseModel):
     type: str
     description: Optional[str] = None
     config: Dict[str, Any]
-    setup_scripts: Optional[List[SetupScript]] = None  # 新增
-    cleanup_scripts: Optional[List[CleanupScript]] = None  # 新增
-    setup_timeout: Optional[int] = 60  # 新增
-    cleanup_timeout: Optional[int] = 30  # 新增
+    # 三阶段脚本配置
+    setup_scripts: Optional[List[SetupScript]] = None  # 前置环节
+    run_scripts: Optional[List[RunScript]] = None  # 运行环节（新增）
+    cleanup_scripts: Optional[List[CleanupScript]] = None  # 清理环节
+    # 超时配置
+    setup_timeout: Optional[int] = 60
+    run_timeout: Optional[int] = 120  # 运行环节超时（新增）
+    cleanup_timeout: Optional[int] = 30
 
 
 class FaultScenarioUpdate(BaseModel):
@@ -78,10 +94,14 @@ class FaultScenarioUpdate(BaseModel):
     type: Optional[str] = None
     description: Optional[str] = None
     config: Optional[Dict[str, Any]] = None
-    setup_scripts: Optional[List[SetupScript]] = None  # 新增
-    cleanup_scripts: Optional[List[CleanupScript]] = None  # 新增
-    setup_timeout: Optional[int] = None  # 新增
-    cleanup_timeout: Optional[int] = None  # 新增
+    # 三阶段脚本配置
+    setup_scripts: Optional[List[SetupScript]] = None
+    run_scripts: Optional[List[RunScript]] = None  # 新增
+    cleanup_scripts: Optional[List[CleanupScript]] = None
+    # 超时配置
+    setup_timeout: Optional[int] = None
+    run_timeout: Optional[int] = None  # 新增
+    cleanup_timeout: Optional[int] = None
 
 
 class FaultScenarioResponse(BaseModel):
@@ -90,10 +110,14 @@ class FaultScenarioResponse(BaseModel):
     type: str
     description: Optional[str] = None
     config: Dict[str, Any]
-    setup_scripts: Optional[List[Dict[str, Any]]] = None  # 新增
-    cleanup_scripts: Optional[List[Dict[str, Any]]] = None  # 新增
-    setup_timeout: Optional[int] = None  # 新增
-    cleanup_timeout: Optional[int] = None  # 新增
+    # 三阶段脚本配置
+    setup_scripts: Optional[List[Dict[str, Any]]] = None  # 前置环节
+    run_scripts: Optional[List[Dict[str, Any]]] = None  # 运行环节（新增）
+    cleanup_scripts: Optional[List[Dict[str, Any]]] = None  # 清理环节
+    # 超时配置
+    setup_timeout: Optional[int] = None
+    run_timeout: Optional[int] = None  # 新增
+    cleanup_timeout: Optional[int] = None
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
 

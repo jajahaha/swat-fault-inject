@@ -1,0 +1,49 @@
+# 故障场景配置文件
+# 导出时间: 2026-05-11
+# 来源: SWAT Fault Inject Platform
+
+metadata:
+  name: "内存压力测试场景"
+  type: "high_concurrency"
+  description: |
+    通过大量并发连接执行内存密集型SQL查询，
+    模拟数据库内存压力场景。
+    测试数据库在内存受限情况下的稳定性。
+
+config:
+  concurrency: 100
+  duration_seconds: 120
+  interval_ms: 50
+  query_template: |
+    SELECT array_agg(id) FROM generate_series(1, 10000) as id
+
+setup:
+  timeout: 60
+  scripts:
+    - type: sql
+      description: "创建测试表"
+      content: |
+        CREATE TABLE IF NOT EXISTS memory_test (
+          id SERIAL PRIMARY KEY,
+          data TEXT,
+          created_at TIMESTAMP DEFAULT NOW()
+        );
+      timeout: 30
+
+    - type: shell
+      description: "检查内存状态"
+      content: "echo 'Memory before test:' && free -h"
+      timeout: 5
+
+cleanup:
+  timeout: 30
+  scripts:
+    - type: sql
+      description: "清理测试数据"
+      content: "DROP TABLE IF EXISTS memory_test;"
+      timeout: 10
+
+    - type: shell
+      description: "检查内存状态"
+      content: "echo 'Memory after test:' && free -h"
+      timeout: 5
