@@ -37,6 +37,9 @@ scenario_<场景名称>.yaml
 metadata:
   name: "场景名称"              # 必填，唯一标识
   type: "场景类型"              # 必填，见类型列表
+  category1: "慢"               # 可选，一级分类：慢/满/宕/错
+  category2: "CPU慢"            # 可选，二级分类：CPU/内存/磁盘/网络/连接等
+  category3: "慢查询"           # 可选，三级分类：具体场景类型
   description: "场景描述"       # 可选，详细说明
 
 config:
@@ -307,4 +310,4 @@ Content-Disposition: attachment; filename="scenario_high_cpu.yaml"
 - Phase 2: 前端界面（已完成）
 - Phase 3: 测试和演示（已完成）
 
-**实现版本：v1.6.2**
+**实现版本：v1.6.3**

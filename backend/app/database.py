@@ -51,6 +51,9 @@ class FaultScenario(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(100), nullable=False)
     type = Column(String(50), nullable=False)
+    category1 = Column(String(50), nullable=True)  # 一级分类: 慢/满/宕/错
+    category2 = Column(String(50), nullable=True)  # 二级分类: CPU/内存/磁盘/网络/连接等
+    category3 = Column(String(50), nullable=True)  # 三级分类: 具体场景类型
     description = Column(Text)
     config = Column(Text, nullable=False)
     # 三阶段脚本配置
@@ -69,6 +72,9 @@ class FaultScenario(Base):
             "id": self.id,
             "name": self.name,
             "type": self.type,
+            "category1": self.category1,
+            "category2": self.category2,
+            "category3": self.category3,
             "description": self.description,
             "config": json.loads(self.config) if self.config else {},
             # 三阶段脚本
@@ -247,6 +253,8 @@ async def init_db():
             default_scenario = FaultScenario(
                 name="高并发CPU压力测试",
                 type="high_concurrency",
+                category1="full",
+                category2="cpu",
                 description="通过50个并发连接持续执行CPU密集型SQL查询，模拟SQL并发过高导致CPU打满的场景",
                 config=json.dumps({
                     "concurrency": 50,
@@ -265,6 +273,8 @@ async def init_db():
             conn_exhaustion_scenario = FaultScenario(
                 name="连接耗尽测试",
                 type="connection_exhaustion",
+                category1="full",
+                category2="connection",
                 description="创建大量连接耗尽数据库连接池，模拟连接资源耗尽场景",
                 config=json.dumps({
                     "concurrency": 200,
@@ -282,6 +292,8 @@ async def init_db():
             slow_query_scenario = FaultScenario(
                 name="慢查询测试",
                 type="slow_query",
+                category1="slow",
+                category2="cpu",
                 description="执行复杂SQL查询消耗数据库资源，模拟慢查询场景",
                 config=json.dumps({
                     "concurrency": 10,

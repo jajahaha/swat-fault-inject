@@ -2,6 +2,41 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.6.3] - 2026-05-11
+
+### Added
+
+- **故障场景三级分类功能**
+  - 新增三级分类字段 `category3`，细化故障类型
+  - 一级分类：慢、满、宕、错（故障大类）
+  - 二级分类：CPU、内存、磁盘、网络、连接等（资源类型）
+  - 三级分类：慢查询、进程CPU满、OOM崩溃等（具体场景）
+  - 共支持 36 种三级分类组合
+
+- **前端三级分类支持**
+  - 故障场景表格新增"三级分类"列
+  - 新建/编辑场景表单新增三级分类下拉选择器
+  - 三级分类选项根据一级+二级分类级联联动
+  - 切换一级分类时自动重置二级、三级分类
+  - 切换二级分类时自动重置三级分类
+
+- **导入导出支持三级分类**
+  - YAML 配置文件支持 `category1`、`category2`、`category3` 字段
+  - 导入时自动解析三级分类并保存到数据库
+  - 导出时包含完整的三级分类信息
+
+- **数据库迁移脚本**
+  - 新增 `migrate_add_category3.py` 自动添加 category3 列
+
+### Changed
+
+- `database.py`: FaultScenario 模型新增 category3 字段
+- `schemas.py`: Create/Update/Response Schema 支持 category3
+- `fault_scenarios.py`: API 创建/更新支持三级分类
+- `scenario_import_export.py`: 导入导出支持三级分类和 run_scripts
+- `scenario_yaml.py`: YAML 解析和导出支持三级分类和 run_scripts
+- `FaultScenarios.jsx`: 新增 CATEGORY3_CONFIG 和三级分类表单组件
+
 ## [1.6.2] - 2026-05-11
 
 ### Added

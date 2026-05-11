@@ -11,6 +11,7 @@ from datetime import datetime
 from app.models.schemas import (
     FaultScenarioCreate,
     SetupScript,
+    RunScript,
     CleanupScript,
 )
 
@@ -113,6 +114,23 @@ class ScenarioYamlParser:
                 except Exception as e:
                     errors.append(f"Cleanup script 解析错误: {str(e)}")
 
+        # 解析 run scripts (运行环节脚本)
+        run_scripts = []
+        run_data = data.get("run", {})
+        if run_data and "scripts" in run_data:
+            for script in run_data["scripts"]:
+                try:
+                    run_scripts.append(RunScript(
+                        type=script.get("type", "sql"),
+                        description=script.get("description"),
+                        content=script.get("content", ""),
+                        timeout=script.get("timeout", 60),
+                        iterations=script.get("iterations", 1),
+                        interval_ms=script.get("interval_ms", 100),
+                    ))
+                except Exception as e:
+                    errors.append(f"Run script 解析错误: {str(e)}")
+
         if errors:
             return None, errors
 
@@ -121,11 +139,16 @@ class ScenarioYamlParser:
             scenario = FaultScenarioCreate(
                 name=metadata.get("name"),
                 type=metadata.get("type"),
+                category1=metadata.get("category1"),
+                category2=metadata.get("category2"),
+                category3=metadata.get("category3"),
                 description=metadata.get("description"),
                 config=config,
                 setup_scripts=setup_scripts if setup_scripts else None,
+                run_scripts=run_scripts if run_scripts else None,
                 cleanup_scripts=cleanup_scripts if cleanup_scripts else None,
                 setup_timeout=setup_data.get("timeout", 60) if setup_data else 60,
+                run_timeout=run_data.get("timeout", 120) if run_data else 120,
                 cleanup_timeout=cleanup_data.get("timeout", 30) if cleanup_data else 30,
             )
             return scenario, []
@@ -138,6 +161,9 @@ class ScenarioYamlParser:
             "metadata": {
                 "name": scenario.get("name"),
                 "type": scenario.get("type"),
+                "category1": scenario.get("category1"),
+                "category2": scenario.get("category2"),
+                "category3": scenario.get("category3"),
                 "description": scenario.get("description"),
             },
             "config": scenario.get("config", {}),
@@ -156,6 +182,24 @@ class ScenarioYamlParser:
                         "timeout": s.get("timeout", 30),
                     }
                     for s in setup_scripts
+                ],
+            }
+
+        # 添加 run scripts (运行环节脚本)
+        run_scripts = scenario.get("run_scripts", [])
+        if run_scripts:
+            yaml_data["run"] = {
+                "timeout": scenario.get("run_timeout", 120),
+                "scripts": [
+                    {
+                        "type": s.get("type", "sql"),
+                        "description": s.get("description"),
+                        "content": s.get("content"),
+                        "timeout": s.get("timeout", 60),
+                        "iterations": s.get("iterations", 1),
+                        "interval_ms": s.get("interval_ms", 100),
+                    }
+                    for s in run_scripts
                 ],
             }
 

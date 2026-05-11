@@ -59,11 +59,16 @@ async def import_scenario(file: UploadFile = File(...)):
             # 更新现有场景
             existing.name = scenario_create.name
             existing.type = scenario_create.type
+            existing.category1 = scenario_create.category1
+            existing.category2 = scenario_create.category2
+            existing.category3 = scenario_create.category3
             existing.description = scenario_create.description
             existing.config = json.dumps(scenario_create.config)  # 转为 JSON 字符串
             existing.setup_scripts = json.dumps([s.dict() for s in (scenario_create.setup_scripts or [])])  # 转为 JSON 字符串
+            existing.run_scripts = json.dumps([s.dict() for s in (scenario_create.run_scripts or [])])  # 新增运行脚本
             existing.cleanup_scripts = json.dumps([s.dict() for s in (scenario_create.cleanup_scripts or [])])  # 转为 JSON 字符串
             existing.setup_timeout = scenario_create.setup_timeout
+            existing.run_timeout = scenario_create.run_timeout  # 新增
             existing.cleanup_timeout = scenario_create.cleanup_timeout
             existing.updated_at = datetime.utcnow()
             
@@ -80,11 +85,16 @@ async def import_scenario(file: UploadFile = File(...)):
             new_scenario = FaultScenario(
                 name=scenario_create.name,
                 type=scenario_create.type,
+                category1=scenario_create.category1,
+                category2=scenario_create.category2,
+                category3=scenario_create.category3,
                 description=scenario_create.description,
                 config=json.dumps(scenario_create.config),  # 转为 JSON 字符串
                 setup_scripts=json.dumps([s.dict() for s in (scenario_create.setup_scripts or [])]),  # 转为 JSON 字符串
+                run_scripts=json.dumps([s.dict() for s in (scenario_create.run_scripts or [])]),  # 新增运行脚本
                 cleanup_scripts=json.dumps([s.dict() for s in (scenario_create.cleanup_scripts or [])]),  # 转为 JSON 字符串
                 setup_timeout=scenario_create.setup_timeout,
+                run_timeout=scenario_create.run_timeout,  # 新增
                 cleanup_timeout=scenario_create.cleanup_timeout,
             )
             
@@ -141,11 +151,16 @@ async def import_scenarios_batch(files: List[UploadFile] = File(...)):
                     # 更新
                     existing.name = scenario_create.name
                     existing.type = scenario_create.type
+                    existing.category1 = scenario_create.category1
+                    existing.category2 = scenario_create.category2
+                    existing.category3 = scenario_create.category3
                     existing.description = scenario_create.description
                     existing.config = json.dumps(scenario_create.config)  # 转为 JSON 字符串
                     existing.setup_scripts = json.dumps([s.dict() for s in (scenario_create.setup_scripts or [])])  # 转为 JSON 字符串
+                    existing.run_scripts = json.dumps([s.dict() for s in (scenario_create.run_scripts or [])])  # 新增运行脚本
                     existing.cleanup_scripts = json.dumps([s.dict() for s in (scenario_create.cleanup_scripts or [])])  # 转为 JSON 字符串
                     existing.setup_timeout = scenario_create.setup_timeout
+                    existing.run_timeout = scenario_create.run_timeout  # 新增
                     existing.cleanup_timeout = scenario_create.cleanup_timeout
                     existing.updated_at = datetime.utcnow()
                     
@@ -159,11 +174,16 @@ async def import_scenarios_batch(files: List[UploadFile] = File(...)):
                     new_scenario = FaultScenario(
                         name=scenario_create.name,
                         type=scenario_create.type,
+                        category1=scenario_create.category1,
+                        category2=scenario_create.category2,
+                        category3=scenario_create.category3,
                         description=scenario_create.description,
                         config=json.dumps(scenario_create.config),  # 转为 JSON 字符串
                         setup_scripts=json.dumps([s.dict() for s in (scenario_create.setup_scripts or [])]),  # 转为 JSON 字符串
+                        run_scripts=json.dumps([s.dict() for s in (scenario_create.run_scripts or [])]),  # 新增运行脚本
                         cleanup_scripts=json.dumps([s.dict() for s in (scenario_create.cleanup_scripts or [])]),  # 转为 JSON 字符串
                         setup_timeout=scenario_create.setup_timeout,
+                        run_timeout=scenario_create.run_timeout,  # 新增
                         cleanup_timeout=scenario_create.cleanup_timeout,
                     )
                     session.add(new_scenario)
@@ -183,6 +203,29 @@ async def import_scenarios_batch(files: List[UploadFile] = File(...)):
         await session.commit()
     
     return results
+
+
+@router.get("/export-all")
+async def export_all_scenarios():
+    """导出所有故障场景"""
+    
+    async with async_session() as session:
+        result = await session.execute(select(FaultScenario))
+        scenarios = [s.to_dict() for s in result.scalars().all()]
+        
+        if not scenarios:
+            raise HTTPException(status_code=404, detail="没有可导出的场景")
+        
+        # 创建 ZIP
+        zip_content = create_zip_from_scenarios(scenarios)
+        
+        return Response(
+            content=zip_content,
+            media_type="application/zip",
+            headers={
+                "Content-Disposition": "attachment; filename=all_scenarios_export.zip"
+            }
+        )
 
 
 @router.get("/export/{scenario_id}")
@@ -238,29 +281,6 @@ async def export_scenarios_batch(scenario_ids: List[int]):
             media_type="application/zip",
             headers={
                 "Content-Disposition": "attachment; filename=scenarios_export.zip"
-            }
-        )
-
-
-@router.get("/export-all")
-async def export_all_scenarios():
-    """导出所有故障场景"""
-    
-    async with async_session() as session:
-        result = await session.execute(select(FaultScenario))
-        scenarios = [s.to_dict() for s in result.scalars().all()]
-        
-        if not scenarios:
-            raise HTTPException(status_code=404, detail="没有可导出的场景")
-        
-        # 创建 ZIP
-        zip_content = create_zip_from_scenarios(scenarios)
-        
-        return Response(
-            content=zip_content,
-            media_type="application/zip",
-            headers={
-                "Content-Disposition": "attachment; filename=all_scenarios_export.zip"
             }
         )
 

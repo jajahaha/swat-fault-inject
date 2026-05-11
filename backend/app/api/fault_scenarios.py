@@ -39,6 +39,9 @@ async def create_fault_scenario(scenario: FaultScenarioCreate):
         fault_scenario = FaultScenario(
             name=scenario.name,
             type=scenario.type,
+            category1=scenario.category1,
+            category2=scenario.category2,
+            category3=scenario.category3,
             description=scenario.description,
             config=json.dumps(scenario.config),
             # 三阶段脚本

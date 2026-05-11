@@ -77,6 +77,9 @@ class CleanupScript(BaseModel):
 class FaultScenarioCreate(BaseModel):
     name: str
     type: str
+    category1: Optional[str] = None  # 一级分类: 慢/满/宕/错
+    category2: Optional[str] = None  # 二级分类: CPU/内存/磁盘/网络/连接等
+    category3: Optional[str] = None  # 三级分类: 具体场景类型
     description: Optional[str] = None
     config: Dict[str, Any]
     # 三阶段脚本配置
@@ -92,6 +95,9 @@ class FaultScenarioCreate(BaseModel):
 class FaultScenarioUpdate(BaseModel):
     name: Optional[str] = None
     type: Optional[str] = None
+    category1: Optional[str] = None  # 一级分类
+    category2: Optional[str] = None  # 二级分类
+    category3: Optional[str] = None  # 三级分类
     description: Optional[str] = None
     config: Optional[Dict[str, Any]] = None
     # 三阶段脚本配置
@@ -108,6 +114,9 @@ class FaultScenarioResponse(BaseModel):
     id: int
     name: str
     type: str
+    category1: Optional[str] = None  # 一级分类
+    category2: Optional[str] = None  # 二级分类
+    category3: Optional[str] = None  # 三级分类
     description: Optional[str] = None
     config: Dict[str, Any]
     # 三阶段脚本配置
