@@ -223,7 +223,7 @@ if [ ! -f "venv/.installed" ]; then
             for wheel in packages/*${WHEEL_TAG}*.whl; do
                 if [ -f "$wheel" ]; then
                     # Skip architecture-specific wheels - handle them separately
-                    if [[ "$wheel" == *"asyncpg"* ]] || [[ "$wheel" == *"greenlet"* ]] || [[ "$wheel" == *"SQLAlchemy"* ]] || [[ "$wheel" == *"psycopg2"* ]] || [[ "$wheel" == *"JPype"* ]] || [[ "$wheel" == *"jpype"* ]]; then
+                    if [[ "$wheel" == *"asyncpg"* ]] || [[ "$wheel" == *"greenlet"* ]] || [[ "$wheel" == *"SQLAlchemy"* ]] || [[ "$wheel" == *"psycopg2"* ]] || [[ "$wheel" == *"JPype"* ]] || [[ "$wheel" == *"jpype"* ]] || [[ "$wheel" == *"PyYAML"* ]] || [[ "$wheel" == *"pyyaml"* ]]; then
                         continue
                     fi
                     cp "$wheel" "$COMPAT_WHEELS_DIR/"
