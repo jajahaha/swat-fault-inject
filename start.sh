@@ -246,10 +246,13 @@ if [ ! -f "venv/.installed" ]; then
             echo -e "${BLUE}Using architecture suffix: $ARCH_SUFFIX${NC}"
 
             # Architecture-specific packages that need special handling
-            ARCH_PACKAGES="asyncpg greenlet SQLAlchemy psycopg2_binary JPype1 jpype1 PyYAML"
+            ARCH_PACKAGES="asyncpg greenlet SQLAlchemy psycopg2_binary JPype1 PyYAML"
 
             for pkg in $ARCH_PACKAGES; do
-                pkg_wheel=$(ls packages/${pkg}*${WHEEL_TAG}*${ARCH_SUFFIX}*.whl 2>/dev/null | head -1)
+                # More precise matching: find wheels matching pkg+version, then filter by architecture
+                # Handle both uppercase and lowercase package names (e.g., JPype1 vs jpype1)
+                pkg_lower=$(echo ${pkg} | tr '[:upper:]' '[:lower:]')
+                pkg_wheel=$(ls packages/${pkg}*${WHEEL_TAG}*.whl packages/${pkg_lower}*${WHEEL_TAG}*.whl 2>/dev/null | grep "${ARCH_SUFFIX}" | head -1)
                 if [ -n "$pkg_wheel" ] && [ -f "$pkg_wheel" ]; then
                     echo -e "${BLUE}Selected $pkg wheel: $(basename $pkg_wheel)${NC}"
                     cp "$pkg_wheel" "$COMPAT_WHEELS_DIR/"
