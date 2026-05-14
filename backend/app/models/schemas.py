@@ -9,6 +9,7 @@ class DatabaseConfigCreate(BaseModel):
     name: str
     db_type: str = "postgresql"  # postgresql, opengauss, gaussdb
     connection_method: str = "psycopg2"  # asyncpg, psycopg2, gsql, jdbc
+    deployment_mode: str = "centralized"  # centralized / distributed
     host: str
     port: int
     database: str
@@ -21,6 +22,7 @@ class DatabaseConfigUpdate(BaseModel):
     name: Optional[str] = None
     db_type: Optional[str] = None
     connection_method: Optional[str] = None
+    deployment_mode: Optional[str] = None
     host: Optional[str] = None
     port: Optional[int] = None
     database: Optional[str] = None
@@ -34,6 +36,7 @@ class DatabaseConfigResponse(BaseModel):
     name: str
     db_type: str
     connection_method: str
+    deployment_mode: str
     host: str
     port: int
     database: str
@@ -49,6 +52,7 @@ class DatabaseConfigResponse(BaseModel):
 class SetupScript(BaseModel):
     """前置准备脚本"""
     type: str = "sql"  # sql / shell
+    mode: str = "all"  # centralized / distributed / all
     description: Optional[str] = None
     content: str
     timeout: int = 30  # 超时时间（秒）
@@ -58,6 +62,7 @@ class SetupScript(BaseModel):
 class RunScript(BaseModel):
     """运行环节脚本（故障注入核心）"""
     type: str = "sql"  # sql / shell / stress
+    mode: str = "all"  # centralized / distributed / all
     description: Optional[str] = None
     content: str
     timeout: int = 60  # 超时时间（秒）
@@ -68,6 +73,7 @@ class RunScript(BaseModel):
 class CleanupScript(BaseModel):
     """清理环境脚本"""
     type: str = "sql"  # sql / shell
+    mode: str = "all"  # centralized / distributed / all
     description: Optional[str] = None
     content: str
     timeout: int = 10  # 超时时间（秒）

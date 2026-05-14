@@ -1,8 +1,9 @@
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, declarative_base, relationship
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, select
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, select, text
 from datetime import datetime
 import json
+import asyncio
 
 from app.config import DATABASE_URL
 
@@ -19,6 +20,7 @@ class DatabaseConfig(Base):
     name = Column(String(100), nullable=False)
     db_type = Column(String(50), nullable=False, default="postgresql")
     connection_method = Column(String(50), nullable=False, default="psycopg2")
+    deployment_mode = Column(String(20), nullable=False, default="centralized")  # 部署形态: centralized / distributed
     host = Column(String(255), nullable=False)
     port = Column(Integer, nullable=False)
     database = Column(String(100), nullable=False)
@@ -34,6 +36,7 @@ class DatabaseConfig(Base):
             "name": self.name,
             "db_type": self.db_type,
             "connection_method": self.connection_method,
+            "deployment_mode": self.deployment_mode,
             "host": self.host,
             "port": self.port,
             "database": self.database,
@@ -189,7 +192,34 @@ class InjectionRecord(Base):
 
 async def init_db():
     async with engine.begin() as conn:
+        # 创建所有表（如果不存在）
         await conn.run_sync(Base.metadata.create_all)
+
+        # 迁移：检查并添加 deployment_mode 列（如果不存在）
+        try:
+            # SQLite 使用 pragma_table_info 检查列是否存在
+            result = await conn.execute(text(
+                "SELECT column_name FROM pragma_table_info('database_configs') WHERE column_name='deployment_mode'"
+            ))
+            existing = result.fetchone()
+            if not existing:
+                await conn.execute(text(
+                    "ALTER TABLE database_configs ADD COLUMN deployment_mode VARCHAR(20) NOT NULL DEFAULT 'centralized'"
+                ))
+                print("迁移成功: 添加 deployment_mode 列")
+        except Exception as e:
+            # 如果不是 SQLite 或者 pragma 命令失败，尝试直接添加（会失败如果列已存在）
+            try:
+                await conn.execute(text(
+                    "ALTER TABLE database_configs ADD COLUMN deployment_mode VARCHAR(20) NOT NULL DEFAULT 'centralized'"
+                ))
+                print("迁移成功: 添加 deployment_mode 列")
+            except Exception:
+                # 列已存在，忽略
+                pass
+
+    # 等待迁移完成后再插入默认数据
+    await asyncio.sleep(0.1)
 
     # Insert default data
     async with async_session() as session:
@@ -202,6 +232,7 @@ async def init_db():
                 name="本地测试数据库",
                 db_type="postgresql",
                 connection_method="asyncpg",
+                deployment_mode="centralized",
                 host="127.0.0.1",
                 port=5432,
                 database="postgres",
@@ -219,6 +250,7 @@ async def init_db():
                 name="openGauss示例",
                 db_type="opengauss",
                 connection_method="gsql",
+                deployment_mode="centralized",
                 host="localhost",
                 port=5433,
                 database="postgres",
@@ -236,6 +268,7 @@ async def init_db():
                 name="GaussDB示例",
                 db_type="gaussdb",
                 connection_method="jdbc",
+                deployment_mode="centralized",
                 host="192.168.1.200",
                 port=8000,
                 database="postgres",

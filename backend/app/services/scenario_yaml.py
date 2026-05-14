@@ -92,6 +92,7 @@ class ScenarioYamlParser:
                 try:
                     setup_scripts.append(SetupScript(
                         type=script.get("type", "sql"),
+                        mode=script.get("mode", "all"),
                         description=script.get("description"),
                         content=script.get("content", ""),
                         timeout=script.get("timeout", 30),
@@ -107,6 +108,7 @@ class ScenarioYamlParser:
                 try:
                     cleanup_scripts.append(CleanupScript(
                         type=script.get("type", "sql"),
+                        mode=script.get("mode", "all"),
                         description=script.get("description"),
                         content=script.get("content", ""),
                         timeout=script.get("timeout", 10),
@@ -122,6 +124,7 @@ class ScenarioYamlParser:
                 try:
                     run_scripts.append(RunScript(
                         type=script.get("type", "sql"),
+                        mode=script.get("mode", "all"),
                         description=script.get("description"),
                         content=script.get("content", ""),
                         timeout=script.get("timeout", 60),
@@ -177,6 +180,7 @@ class ScenarioYamlParser:
                 "scripts": [
                     {
                         "type": s.get("type", "sql"),
+                        "mode": s.get("mode", "all"),
                         "description": s.get("description"),
                         "content": s.get("content"),
                         "timeout": s.get("timeout", 30),
@@ -193,6 +197,7 @@ class ScenarioYamlParser:
                 "scripts": [
                     {
                         "type": s.get("type", "sql"),
+                        "mode": s.get("mode", "all"),
                         "description": s.get("description"),
                         "content": s.get("content"),
                         "timeout": s.get("timeout", 60),
@@ -211,6 +216,7 @@ class ScenarioYamlParser:
                 "scripts": [
                     {
                         "type": s.get("type", "sql"),
+                        "mode": s.get("mode", "all"),
                         "description": s.get("description"),
                         "content": s.get("content"),
                         "timeout": s.get("timeout", 10),

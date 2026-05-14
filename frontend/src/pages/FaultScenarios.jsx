@@ -289,6 +289,10 @@ function FaultScenarios() {
 
   const handleEdit = (record) => {
     setEditingScenario(record)
+    // 为每个脚本添加 mode 默认值
+    const setupScripts = (record.setup_scripts || []).map(s => ({ ...s, mode: s.mode || 'all' }))
+    const runScripts = (record.run_scripts || []).map(s => ({ ...s, mode: s.mode || 'all' }))
+    const cleanupScripts = (record.cleanup_scripts || []).map(s => ({ ...s, mode: s.mode || 'all' }))
     form.setFieldsValue({
       name: record.name,
       type: record.type,
@@ -297,9 +301,9 @@ function FaultScenarios() {
       category3: record.category3 || 'query',
       description: record.description,
       config: record.config,
-      setup_scripts: record.setup_scripts || [],
-      run_scripts: record.run_scripts || [],
-      cleanup_scripts: record.cleanup_scripts || [],
+      setup_scripts: setupScripts,
+      run_scripts: runScripts,
+      cleanup_scripts: cleanupScripts,
       setup_timeout: record.setup_timeout || 60,
       run_timeout: record.run_timeout || 120,
       cleanup_timeout: record.cleanup_timeout || 30,
@@ -792,7 +796,7 @@ function FaultScenarios() {
                 {fields.map(({ key, name, ...restField }) => (
                   <Card key={key} size="small" style={{ marginBottom: 8 }} title={`前置脚本 ${name + 1}`}>
                     <Row gutter={16}>
-                      <Col span={6}>
+                      <Col span={4}>
                         <Form.Item {...restField} name={[name, 'type']} label="类型">
                           <Select>
                             <Select.Option value="sql">SQL</Select.Option>
@@ -800,7 +804,16 @@ function FaultScenarios() {
                           </Select>
                         </Form.Item>
                       </Col>
-                      <Col span={6}>
+                      <Col span={4}>
+                        <Form.Item {...restField} name={[name, 'mode']} label="形态">
+                          <Select>
+                            <Select.Option value="all">ALL</Select.Option>
+                            <Select.Option value="centralized">集中式</Select.Option>
+                            <Select.Option value="distributed">分布式</Select.Option>
+                          </Select>
+                        </Form.Item>
+                      </Col>
+                      <Col span={4}>
                         <Form.Item {...restField} name={[name, 'timeout']} label="超时(秒)">
                           <InputNumber min={5} max={120} style={{ width: '100%' }} />
                         </Form.Item>
@@ -819,7 +832,7 @@ function FaultScenarios() {
                     </Button>
                   </Card>
                 ))}
-                <Button type="dashed" onClick={() => add({ type: 'sql', timeout: 30 })} block icon={<PlusOutlined />}>
+                <Button type="dashed" onClick={() => add({ type: 'sql', mode: 'all', timeout: 30 })} block icon={<PlusOutlined />}>
                   添加前置脚本
                 </Button>
               </>
@@ -842,7 +855,7 @@ function FaultScenarios() {
                 {fields.map(({ key, name, ...restField }) => (
                   <Card key={key} size="small" style={{ marginBottom: 8, background: '#fff7e6' }} title={`运行脚本 ${name + 1}`}>
                     <Row gutter={16}>
-                      <Col span={6}>
+                      <Col span={4}>
                         <Form.Item {...restField} name={[name, 'type']} label="类型">
                           <Select>
                             <Select.Option value="sql">SQL</Select.Option>
@@ -851,25 +864,36 @@ function FaultScenarios() {
                           </Select>
                         </Form.Item>
                       </Col>
-                      <Col span={6}>
+                      <Col span={4}>
+                        <Form.Item {...restField} name={[name, 'mode']} label="形态">
+                          <Select>
+                            <Select.Option value="all">ALL</Select.Option>
+                            <Select.Option value="centralized">集中式</Select.Option>
+                            <Select.Option value="distributed">分布式</Select.Option>
+                          </Select>
+                        </Form.Item>
+                      </Col>
+                      <Col span={4}>
                         <Form.Item {...restField} name={[name, 'timeout']} label="超时(秒)">
                           <InputNumber min={10} max={300} style={{ width: '100%' }} />
                         </Form.Item>
                       </Col>
-                      <Col span={6}>
+                      <Col span={4}>
                         <Form.Item {...restField} name={[name, 'iterations']} label="执行次数">
                           <InputNumber min={1} max={1000} style={{ width: '100%' }} />
                         </Form.Item>
                       </Col>
-                      <Col span={6}>
+                      <Col span={4}>
                         <Form.Item {...restField} name={[name, 'interval_ms']} label="间隔(毫秒)">
                           <InputNumber min={0} max={10000} style={{ width: '100%' }} />
                         </Form.Item>
                       </Col>
+                      <Col span={4}>
+                        <Form.Item {...restField} name={[name, 'description']} label="描述">
+                          <Input placeholder="脚本用途" />
+                        </Form.Item>
+                      </Col>
                     </Row>
-                    <Form.Item {...restField} name={[name, 'description']} label="描述">
-                      <Input placeholder="脚本用途说明" />
-                    </Form.Item>
                     <Form.Item {...restField} name={[name, 'content']} label="脚本内容">
                       <TextArea rows={3} placeholder="SQL语句、Shell命令或压力测试参数" />
                     </Form.Item>
@@ -878,7 +902,7 @@ function FaultScenarios() {
                     </Button>
                   </Card>
                 ))}
-                <Button type="dashed" onClick={() => add({ type: 'sql', timeout: 60, iterations: 1, interval_ms: 100 })} block icon={<PlusOutlined />}>
+                <Button type="dashed" onClick={() => add({ type: 'sql', mode: 'all', timeout: 60, iterations: 1, interval_ms: 100 })} block icon={<PlusOutlined />}>
                   添加运行脚本
                 </Button>
               </>
@@ -895,7 +919,7 @@ function FaultScenarios() {
                 {fields.map(({ key, name, ...restField }) => (
                   <Card key={key} size="small" style={{ marginBottom: 8, background: '#f6ffed' }} title={`清理脚本 ${name + 1}`}>
                     <Row gutter={16}>
-                      <Col span={6}>
+                      <Col span={4}>
                         <Form.Item {...restField} name={[name, 'type']} label="类型">
                           <Select>
                             <Select.Option value="sql">SQL</Select.Option>
@@ -903,7 +927,16 @@ function FaultScenarios() {
                           </Select>
                         </Form.Item>
                       </Col>
-                      <Col span={6}>
+                      <Col span={4}>
+                        <Form.Item {...restField} name={[name, 'mode']} label="形态">
+                          <Select>
+                            <Select.Option value="all">ALL</Select.Option>
+                            <Select.Option value="centralized">集中式</Select.Option>
+                            <Select.Option value="distributed">分布式</Select.Option>
+                          </Select>
+                        </Form.Item>
+                      </Col>
+                      <Col span={4}>
                         <Form.Item {...restField} name={[name, 'timeout']} label="超时(秒)">
                           <InputNumber min={5} max={60} style={{ width: '100%' }} />
                         </Form.Item>
@@ -922,7 +955,7 @@ function FaultScenarios() {
                     </Button>
                   </Card>
                 ))}
-                <Button type="dashed" onClick={() => add({ type: 'sql', timeout: 10 })} block icon={<PlusOutlined />}>
+                <Button type="dashed" onClick={() => add({ type: 'sql', mode: 'all', timeout: 10 })} block icon={<PlusOutlined />}>
                   添加清理脚本
                 </Button>
               </>

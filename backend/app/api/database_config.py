@@ -43,6 +43,18 @@ SUPPORTED_CONNECTION_METHODS = [
 ]
 
 
+# Supported deployment modes
+SUPPORTED_DEPLOYMENT_MODES = [
+    {"value": "centralized", "label": "集中式"},
+    {"value": "distributed", "label": "分布式"},
+]
+
+
+@router.get("/deployment-modes")
+async def get_deployment_modes():
+    return SUPPORTED_DEPLOYMENT_MODES
+
+
 @router.get("/types")
 async def get_database_types():
     return SUPPORTED_DB_TYPES
@@ -80,6 +92,7 @@ async def create_database_config(config: DatabaseConfigCreate):
             name=config.name,
             db_type=config.db_type,
             connection_method=config.connection_method,
+            deployment_mode=config.deployment_mode,
             host=config.host,
             port=config.port,
             database=config.database,

@@ -14,6 +14,7 @@ export const databaseConfigApi = {
   testConnection: (id) => api.post(`/database-configs/${id}/test`),
   getTypes: () => api.get('/database-configs/types'),
   getConnectionMethods: () => api.get('/database-configs/connection-methods'),
+  getDeploymentModes: () => api.get('/database-configs/deployment-modes'),
 }
 
 export const faultScenarioApi = {

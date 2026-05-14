@@ -51,6 +51,31 @@ class DrillExecutor:
         self._stop_event = threading.Event()
         self.current_step_id: Optional[int] = None
 
+    def _filter_scripts_by_mode(self, scripts: List[Dict], deployment_mode: str) -> List[Dict]:
+        """根据部署形态过滤脚本
+
+        Args:
+            scripts: 脚本列表
+            deployment_mode: 部署形态 (centralized / distributed)
+
+        Returns:
+            过滤后的脚本列表，包含 mode=all 和 mode=deployment_mode 的脚本
+        """
+        if not scripts:
+            return []
+
+        filtered = []
+        for script in scripts:
+            mode = script.get("mode", "all")  # 默认为 all（向后兼容）
+            # mode=all 的脚本在所有形态下执行
+            # mode=deployment_mode 的脚本只在对应形态下执行
+            if mode == "all" or mode == deployment_mode:
+                filtered.append(script)
+                self.log(f"脚本 '{script.get('description', '未命名')}' 匹配形态: {mode}")
+
+        self.log(f"脚本过滤结果: 原始 {len(scripts)} 个, 过滤后 {len(filtered)} 个")
+        return filtered
+
     async def run(self):
         """执行演练"""
         self.running = True
@@ -161,13 +186,27 @@ class DrillExecutor:
 
             scenario_config = scenario.to_dict()
 
+            # 获取数据库配置的部署形态
+            db_result = await session.execute(
+                select(DatabaseConfig).where(DatabaseConfig.id == self.db_config.id)
+            )
+            db_config_obj = db_result.scalar_one_or_none()
+            deployment_mode = db_config_obj.deployment_mode if db_config_obj else "centralized"
+            self.log(f"数据库部署形态: {deployment_mode}")
+
         # 1. 前置准备阶段
         self.log(f"步骤 {step.step_order}: 开始前置准备")
         await self._update_step_status(step_id, "preparing", current_phase="preparing", progress_percent=0)
 
+        # 根据部署形态过滤脚本
+        filtered_setup_scripts = self._filter_scripts_by_mode(
+            scenario_config.get("setup_scripts", []),
+            deployment_mode
+        )
+
         setup_success = await self._execute_scripts(
             step_id,
-            scenario_config.get("setup_scripts", []),
+            filtered_setup_scripts,
             "setup",
             scenario_config.get("setup_timeout", 60)
         )
@@ -191,12 +230,14 @@ class DrillExecutor:
 
         # 检查是否有自定义运行脚本
         run_scripts = scenario_config.get("run_scripts", [])
-        if run_scripts:
+        filtered_run_scripts = self._filter_scripts_by_mode(run_scripts, deployment_mode)
+
+        if filtered_run_scripts:
             # 使用自定义运行脚本
             self.log(f"步骤 {step.step_order}: 使用自定义运行脚本")
             run_success = await self._execute_scripts(
                 step_id,
-                run_scripts,
+                filtered_run_scripts,
                 "run",
                 scenario_config.get("run_timeout", 120)
             )
@@ -221,9 +262,15 @@ class DrillExecutor:
         self.log(f"步骤 {step.step_order}: 开始清理环境")
         await self._update_step_progress(step_id, current_phase="cleaning", progress_percent=80)
 
+        # 根据部署形态过滤清理脚本
+        filtered_cleanup_scripts = self._filter_scripts_by_mode(
+            scenario_config.get("cleanup_scripts", []),
+            deployment_mode
+        )
+
         cleanup_success = await self._execute_scripts(
             step_id,
-            scenario_config.get("cleanup_scripts", []),
+            filtered_cleanup_scripts,
             "cleanup",
             scenario_config.get("cleanup_timeout", 30)
         )

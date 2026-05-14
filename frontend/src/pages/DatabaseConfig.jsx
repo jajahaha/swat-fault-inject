@@ -43,11 +43,17 @@ const CONNECTION_METHOD_COLORS = {
   jdbc: 'warning',
 }
 
+const DEPLOYMENT_MODE_COLORS = {
+  centralized: { bg: '#e6f7ff', text: '#1890ff', label: '集中式' },
+  distributed: { bg: '#fff7e6', text: '#fa8c16', label: '分布式' },
+}
+
 function DatabaseConfig() {
   const location = useLocation()
   const [configs, setConfigs] = useState([])
   const [dbTypes, setDbTypes] = useState([])
   const [connectionMethods, setConnectionMethods] = useState([])
+  const [deploymentModes, setDeploymentModes] = useState([])
   const [loading, setLoading] = useState(false)
   const [modalVisible, setModalVisible] = useState(false)
   const [editingConfig, setEditingConfig] = useState(null)
@@ -58,6 +64,7 @@ function DatabaseConfig() {
     loadConfigs()
     loadDbTypes()
     loadConnectionMethods()
+    loadDeploymentModes()
   }, [location.pathname])
 
   const loadConfigs = async () => {
@@ -98,12 +105,25 @@ function DatabaseConfig() {
     }
   }
 
+  const loadDeploymentModes = async () => {
+    try {
+      const response = await databaseConfigApi.getDeploymentModes()
+      setDeploymentModes(response.data)
+    } catch (error) {
+      setDeploymentModes([
+        { value: 'centralized', label: '集中式' },
+        { value: 'distributed', label: '分布式' },
+      ])
+    }
+  }
+
   const handleCreate = () => {
     setEditingConfig(null)
     form.resetFields()
     form.setFieldsValue({
       db_type: 'postgresql',
       connection_method: 'asyncpg',
+      deployment_mode: 'centralized',
       port: 5432,
       password: ''
     })
@@ -113,7 +133,10 @@ function DatabaseConfig() {
 
   const handleEdit = (record) => {
     setEditingConfig(record)
-    form.setFieldsValue(record)
+    form.setFieldsValue({
+      ...record,
+      deployment_mode: record.deployment_mode || 'centralized',
+    })
     setSelectedDbType(record.db_type)
     setModalVisible(true)
   }
@@ -161,6 +184,7 @@ function DatabaseConfig() {
         name: values.name || '',
         db_type: values.db_type || 'postgresql',
         connection_method: values.connection_method || 'psycopg2',
+        deployment_mode: values.deployment_mode || 'centralized',
         host: values.host || '',
         port: values.port || 5432,
         database: values.database || '',
@@ -231,7 +255,27 @@ function DatabaseConfig() {
         return <Tag color={CONNECTION_METHOD_COLORS[method] || 'default'}>{methodInfo.label}</Tag>
       },
     },
-    { 
+    {
+      title: '部署形态',
+      dataIndex: 'deployment_mode',
+      key: 'deployment_mode',
+      render: (mode) => {
+        const modeInfo = DEPLOYMENT_MODE_COLORS[mode] || { bg: '#f5f5f5', text: '#666', label: mode || '集中式' }
+        return (
+          <Tag
+            style={{
+              background: modeInfo.bg,
+              color: modeInfo.text,
+              border: `1px solid ${modeInfo.text}`,
+              borderRadius: '6px',
+            }}
+          >
+            {modeInfo.label}
+          </Tag>
+        )
+      },
+    },
+    {
       title: '主机', 
       dataIndex: 'host', 
       key: 'host',
@@ -461,6 +505,26 @@ function DatabaseConfig() {
               {filteredConnectionMethods.map(method => (
                 <Select.Option key={method.value} value={method.value}>
                   {method.label}
+                </Select.Option>
+              ))}
+            </Select>
+          </Form.Item>
+          <Form.Item
+            name="deployment_mode"
+            label={
+              <span>
+                部署形态
+                <Tooltip title="集中式: 单节点部署；分布式: 多节点部署。执行场景时会根据形态选择对应脚本">
+                  <InfoCircleOutlined style={{ marginLeft: 8, color: '#999' }} />
+                </Tooltip>
+              </span>
+            }
+            rules={[{ required: true, message: '请选择部署形态' }]}
+          >
+            <Select>
+              {deploymentModes.map(mode => (
+                <Select.Option key={mode.value} value={mode.value}>
+                  {mode.label}
                 </Select.Option>
               ))}
             </Select>
