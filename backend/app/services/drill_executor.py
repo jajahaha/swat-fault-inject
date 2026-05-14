@@ -489,9 +489,11 @@ class DrillExecutor:
                         [self.db_config.username, self.db_config.password],
                         driver_path,
                     )
+                    # GaussDB JDBC 默认 autoCommit=True，不需要手动 commit
+                    # 如果需要手动 commit，先禁用 autoCommit：conn.setAutoCommit(False)
                     cursor = conn.cursor()
                     cursor.execute(sql)
-                    conn.commit()
+                    # autoCommit 模式下不需要手动 commit
                     cursor.close()
                     conn.close()
                     return True
