@@ -198,14 +198,20 @@ async def _test_asyncpg(db_config) -> ConnectionTestResponse:
 async def _test_psycopg2(db_config) -> ConnectionTestResponse:
     """Test connection using psycopg2 driver"""
     def connect_psycopg2():
-        conn = psycopg2.connect(
-            host=db_config.host,
-            port=db_config.port,
-            database=db_config.database,
-            user=db_config.username,
-            password=db_config.password,
-            connect_timeout=10,
-        )
+        # GaussDB/openGauss sha256 认证可能需要 SSL 参数
+        connect_params = {
+            "host": db_config.host,
+            "port": db_config.port,
+            "database": db_config.database,
+            "user": db_config.username,
+            "password": db_config.password,
+            "connect_timeout": 10,
+        }
+        # 添加 SSL 支持（GaussDB/openGauss sha256 认证需要）
+        if db_config.db_type in ("gaussdb", "opengauss"):
+            connect_params["sslmode"] = "prefer"
+
+        conn = psycopg2.connect(**connect_params)
         cursor = conn.cursor()
         cursor.execute("SELECT version()")
         version = cursor.fetchone()[0]
@@ -360,8 +366,15 @@ async def _test_jdbc(db_config) -> ConnectionTestResponse:
         }
         driver_class = driver_classes.get(db_config.db_type, "org.postgresql.Driver")
 
-        # JDBC URL format
-        jdbc_url = f"jdbc:{db_config.db_type}://{db_config.host}:{db_config.port}/{db_config.database}"
+        # JDBC URL format with sha256 auth support for GaussDB
+        if db_config.db_type == "gaussdb":
+            # GaussDB 需要指定 authmode=sha256 来支持 sha256 认证
+            jdbc_url = f"jdbc:gaussdb://{db_config.host}:{db_config.port}/{db_config.database}?authmode=sha256"
+        elif db_config.db_type == "opengauss":
+            # openGauss 也可能需要 sha256 认证支持
+            jdbc_url = f"jdbc:opengauss://{db_config.host}:{db_config.port}/{db_config.database}?authmode=sha256"
+        else:
+            jdbc_url = f"jdbc:{db_config.db_type}://{db_config.host}:{db_config.port}/{db_config.database}"
 
         def connect_jdbc():
             try:

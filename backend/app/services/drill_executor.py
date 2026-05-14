@@ -320,7 +320,9 @@ class DrillExecutor:
     async def _execute_sql(self, sql: str, timeout: int) -> bool:
         """执行 SQL 脚本"""
         try:
-            if self.db_config.connection_method == "asyncpg":
+            method = self.db_config.connection_method
+
+            if method == "asyncpg":
                 conn = await asyncpg.connect(
                     host=self.db_config.host,
                     port=self.db_config.port,
@@ -331,23 +333,45 @@ class DrillExecutor:
                 )
                 await conn.execute(sql)
                 await conn.close()
-            else:
-                # psycopg2 或其他
-                def run_sql():
-                    conn = psycopg2.connect(
-                        host=self.db_config.host,
-                        port=self.db_config.port,
-                        database=self.db_config.database,
-                        user=self.db_config.username,
-                        password=self.db_config.password,
-                    )
+
+            elif method == "psycopg2":
+                def run_sql_psycopg2():
+                    # GaussDB/openGauss sha256 认证可能需要 SSL 参数
+                    connect_params = {
+                        "host": self.db_config.host,
+                        "port": self.db_config.port,
+                        "database": self.db_config.database,
+                        "user": self.db_config.username,
+                        "password": self.db_config.password,
+                    }
+                    # 添加 SSL 支持（GaussDB/openGauss sha256 认证需要）
+                    if self.db_config.db_type in ("gaussdb", "opengauss"):
+                        connect_params["sslmode"] = "prefer"
+
+                    conn = psycopg2.connect(**connect_params)
                     cursor = conn.cursor()
                     cursor.execute(sql)
                     conn.commit()
                     cursor.close()
                     conn.close()
 
-                await run_sync(run_sql)
+                await run_sync(run_sql_psycopg2)
+
+            elif method == "gsql":
+                # 使用 gsql 命令行工具执行 SQL
+                success = await self._execute_sql_via_gsql(sql, timeout)
+                if not success:
+                    return False
+
+            elif method == "jdbc":
+                # 使用 JDBC 驱动执行 SQL
+                success = await self._execute_sql_via_jdbc(sql, timeout)
+                if not success:
+                    return False
+
+            else:
+                self.log(f"不支持的连接方式: {method}")
+                return False
 
             return True
 
@@ -356,6 +380,135 @@ class DrillExecutor:
             return False
         except Exception as e:
             self.log(f"SQL 执行错误: {str(e)}")
+            return False
+
+    async def _execute_sql_via_gsql(self, sql: str, timeout: int) -> bool:
+        """使用 gsql 命令行工具执行 SQL"""
+        try:
+            # 查找 gsql 可执行文件
+            gsql_path = "gsql"
+            gsql_paths = [
+                "gsql",
+                "/usr/bin/gsql",
+                "/usr/local/bin/gsql",
+                "/opt/gaussdb/bin/gsql",
+                "/opt/opengauss/bin/gsql",
+                "/home/service/gsql",
+            ]
+            for path in gsql_paths:
+                if os.path.exists(path):
+                    gsql_path = path
+                    break
+
+            if not os.path.exists(gsql_path):
+                self.log(f"gsql 未找到")
+                return False
+
+            # 构建 gsql 命令
+            cmd = [
+                gsql_path,
+                "-h", self.db_config.host,
+                "-p", str(self.db_config.port),
+                "-d", self.db_config.database,
+                "-U", self.db_config.username,
+                "-W", self.db_config.password,
+                "-r",  # 远程连接
+                "-c", sql,  # 执行 SQL
+            ]
+
+            def run_gsql():
+                env = os.environ.copy()
+                env["PGPASSWORD"] = self.db_config.password
+                result = subprocess.run(
+                    cmd,
+                    capture_output=True,
+                    text=True,
+                    timeout=timeout,
+                    env=env,
+                )
+                return result
+
+            result = await run_sync(run_gsql)
+
+            if result.returncode != 0:
+                self.log(f"gsql 执行失败: {result.stderr}")
+                return False
+
+            self.log(f"gsql 执行成功")
+            return True
+
+        except subprocess.TimeoutExpired:
+            self.log(f"gsql 执行超时")
+            return False
+        except Exception as e:
+            self.log(f"gsql 执行异常: {str(e)}")
+            return False
+
+    async def _execute_sql_via_jdbc(self, sql: str, timeout: int) -> bool:
+        """使用 JDBC 驱动执行 SQL"""
+        try:
+            driver_path = self.db_config.jdbc_driver_path
+            if not driver_path:
+                self.log(f"JDBC 驱动路径未配置")
+                return False
+
+            # 检查驱动文件是否存在
+            if not os.path.exists(driver_path):
+                project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+                full_path = os.path.join(project_root, driver_path)
+                if os.path.exists(full_path):
+                    driver_path = full_path
+                else:
+                    self.log(f"JDBC 驱动文件不存在: {driver_path}")
+                    return False
+
+            # JDBC 驱动类名
+            driver_classes = {
+                "postgresql": "org.postgresql.Driver",
+                "opengauss": "org.opengauss.Driver",
+                "gaussdb": "com.huawei.gaussdb.jdbc.Driver",
+            }
+            driver_class = driver_classes.get(self.db_config.db_type, "org.postgresql.Driver")
+
+            # JDBC URL with sha256 auth support for GaussDB
+            if self.db_config.db_type == "gaussdb":
+                # GaussDB 需要指定 authmode=sha256 来支持 sha256 认证
+                jdbc_url = f"jdbc:gaussdb://{self.db_config.host}:{self.db_config.port}/{self.db_config.database}?authmode=sha256"
+            elif self.db_config.db_type == "opengauss":
+                # openGauss 也可能需要 sha256 认证支持
+                jdbc_url = f"jdbc:opengauss://{self.db_config.host}:{self.db_config.port}/{self.db_config.database}?authmode=sha256"
+            else:
+                jdbc_url = f"jdbc:{self.db_config.db_type}://{self.db_config.host}:{self.db_config.port}/{self.db_config.database}"
+
+            def run_jdbc():
+                try:
+                    import jaydebeapi
+                    conn = jaydebeapi.connect(
+                        driver_class,
+                        jdbc_url,
+                        [self.db_config.username, self.db_config.password],
+                        driver_path,
+                    )
+                    cursor = conn.cursor()
+                    cursor.execute(sql)
+                    conn.commit()
+                    cursor.close()
+                    conn.close()
+                    return True
+                except ImportError:
+                    raise Exception("jaydebeapi 未安装，请运行: pip install jaydebeapi JPype1")
+                except Exception as e:
+                    raise e
+
+            await run_sync(run_jdbc)
+            self.log(f"JDBC 执行成功")
+            return True
+
+        except asyncio.TimeoutError:
+            self.log(f"JDBC 执行超时")
+            return False
+        except Exception as e:
+            self.log(f"JDBC 执行异常: {str(e)}")
             return False
 
     async def _execute_shell(self, command: str, timeout: int) -> bool:
@@ -406,16 +559,23 @@ class DrillExecutor:
                             user=self.db_config.username,
                             password=self.db_config.password,
                         )
-                    else:
+                    elif self.db_config.connection_method == "psycopg2":
                         def create_conn():
-                            return psycopg2.connect(
-                                host=self.db_config.host,
-                                port=self.db_config.port,
-                                database=self.db_config.database,
-                                user=self.db_config.username,
-                                password=self.db_config.password,
-                            )
+                            # GaussDB/openGauss sha256 认证可能需要 SSL 参数
+                            connect_params = {
+                                "host": self.db_config.host,
+                                "port": self.db_config.port,
+                                "database": self.db_config.database,
+                                "user": self.db_config.username,
+                                "password": self.db_config.password,
+                            }
+                            if self.db_config.db_type in ("gaussdb", "opengauss"):
+                                connect_params["sslmode"] = "prefer"
+                            return psycopg2.connect(**connect_params)
                         conn = await run_sync(create_conn)
+                    else:
+                        self.log(f"故障注入不支持连接方式: {self.db_config.connection_method}")
+                        continue
 
                     connections.append(conn)
                     self.log(f"连接 {i + 1}/{concurrency} 建立")
@@ -436,7 +596,7 @@ class DrillExecutor:
                     try:
                         if self.db_config.connection_method == "asyncpg":
                             await conn.execute(query)
-                        else:
+                        elif self.db_config.connection_method == "psycopg2":
                             def exec_query():
                                 cursor = conn.cursor()
                                 cursor.execute(query)

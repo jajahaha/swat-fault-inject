@@ -134,13 +134,19 @@ class FaultInjector:
         self.log("Using psycopg2 driver")
 
         def create_connection():
-            return psycopg2.connect(
-                host=self.db_config.host,
-                port=self.db_config.port,
-                database=self.db_config.database,
-                user=self.db_config.username,
-                password=self.db_config.password,
-            )
+            # GaussDB/openGauss sha256 认证可能需要 SSL 参数
+            connect_params = {
+                "host": self.db_config.host,
+                "port": self.db_config.port,
+                "database": self.db_config.database,
+                "user": self.db_config.username,
+                "password": self.db_config.password,
+            }
+            # 添加 SSL 支持（GaussDB/openGauss sha256 认证需要）
+            if self.db_config.db_type in ("gaussdb", "opengauss"):
+                connect_params["sslmode"] = "prefer"
+
+            return psycopg2.connect(**connect_params)
 
         # Create connections in thread pool
         for i in range(concurrency):
@@ -317,7 +323,16 @@ class FaultInjector:
             "gaussdb": "com.huawei.gaussdb.jdbc.Driver",
         }
         driver_class = driver_classes.get(self.db_config.db_type, "org.postgresql.Driver")
-        jdbc_url = f"jdbc:{self.db_config.db_type}://{self.db_config.host}:{self.db_config.port}/{self.db_config.database}"
+
+        # JDBC URL with sha256 auth support for GaussDB
+        if self.db_config.db_type == "gaussdb":
+            # GaussDB 需要指定 authmode=sha256 来支持 sha256 认证
+            jdbc_url = f"jdbc:gaussdb://{self.db_config.host}:{self.db_config.port}/{self.db_config.database}?authmode=sha256"
+        elif self.db_config.db_type == "opengauss":
+            # openGauss 也可能需要 sha256 认证支持
+            jdbc_url = f"jdbc:opengauss://{self.db_config.host}:{self.db_config.port}/{self.db_config.database}?authmode=sha256"
+        else:
+            jdbc_url = f"jdbc:{self.db_config.db_type}://{self.db_config.host}:{self.db_config.port}/{self.db_config.database}"
 
         self.log(f"JDBC URL: {jdbc_url}")
         self.log(f"Driver: {driver_class}")
