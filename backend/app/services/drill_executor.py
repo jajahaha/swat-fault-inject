@@ -554,13 +554,23 @@ class DrillExecutor:
         query = config.get("query_template", "SELECT 1")
 
         self.log(f"故障注入参数: 并发={concurrency}, 持续={duration}s, 间隔={interval_ms}ms")
+        method = self.db_config.connection_method
 
         try:
-            # 创建连接
+            # JDBC 和 gsql 方式使用不同的执行逻辑
+            if method == "jdbc":
+                self.log(f"使用 JDBC 方式执行故障注入")
+                return await self._execute_fault_injection_jdbc(query, concurrency, duration, interval_ms, step_id)
+
+            elif method == "gsql":
+                self.log(f"使用 gsql 方式执行故障注入")
+                return await self._execute_fault_injection_gsql(query, concurrency, duration, interval_ms, step_id)
+
+            # asyncpg 和 psycopg2 方式使用连接池
             connections = []
             for i in range(concurrency):
                 try:
-                    if self.db_config.connection_method == "asyncpg":
+                    if method == "asyncpg":
                         conn = await asyncpg.connect(
                             host=self.db_config.host,
                             port=self.db_config.port,
@@ -568,9 +578,8 @@ class DrillExecutor:
                             user=self.db_config.username,
                             password=self.db_config.password,
                         )
-                    elif self.db_config.connection_method == "psycopg2":
+                    elif method == "psycopg2":
                         def create_conn():
-                            # GaussDB/openGauss sha256 认证可能需要 SSL 参数
                             connect_params = {
                                 "host": self.db_config.host,
                                 "port": self.db_config.port,
@@ -583,8 +592,8 @@ class DrillExecutor:
                             return psycopg2.connect(**connect_params)
                         conn = await run_sync(create_conn)
                     else:
-                        self.log(f"故障注入不支持连接方式: {self.db_config.connection_method}")
-                        continue
+                        self.log(f"故障注入不支持连接方式: {method}")
+                        return False
 
                     connections.append(conn)
                     self.log(f"连接 {i + 1}/{concurrency} 建立")
@@ -603,16 +612,15 @@ class DrillExecutor:
                 elapsed = 0
                 while self.running and not self._stop_event.is_set() and elapsed < duration:
                     try:
-                        if self.db_config.connection_method == "asyncpg":
+                        if method == "asyncpg":
                             await conn.execute(query)
-                        elif self.db_config.connection_method == "psycopg2":
+                        elif method == "psycopg2":
                             def exec_query():
                                 cursor = conn.cursor()
                                 cursor.execute(query)
                                 cursor.close()
                             await run_sync(exec_query)
 
-                        # 更新进度
                         step_progress = 20 + int((elapsed / duration) * 60)
                         await self._update_step_progress(step_id, progress_percent=step_progress)
 
@@ -628,13 +636,12 @@ class DrillExecutor:
                 task = asyncio.create_task(run_queries(conn, idx))
                 tasks.append(task)
 
-            # 等待完成
             await asyncio.wait_for(asyncio.gather(*tasks, return_exceptions=True), timeout=duration + 10)
 
             # 关闭连接
             for i, conn in enumerate(connections):
                 try:
-                    if self.db_config.connection_method == "asyncpg":
+                    if method == "asyncpg":
                         await conn.close()
                     else:
                         await run_sync(conn.close)
@@ -648,6 +655,224 @@ class DrillExecutor:
             return False
         except Exception as e:
             self.log(f"故障注入错误: {str(e)}")
+            return False
+
+    async def _execute_fault_injection_gsql(self, query: str, concurrency: int, duration: int, interval_ms: int, step_id: int) -> bool:
+        """使用 gsql 方式执行故障注入（并发查询）"""
+        self.log(f"gsql 故障注入: 并发={concurrency}, 持续={duration}s, 间隔={interval_ms}ms")
+
+        # gsql 每次执行都是独立进程，使用线程池实现并发
+        async def run_gsql_worker(worker_idx: int):
+            """单个 gsql worker 执行查询"""
+            elapsed = 0
+            query_count = 0
+            error_count = 0
+
+            # 查找 gsql
+            gsql_path = "gsql"
+            gsql_paths = [
+                "gsql",
+                "/usr/bin/gsql",
+                "/usr/local/bin/gsql",
+                "/opt/gaussdb/bin/gsql",
+                "/opt/opengauss/bin/gsql",
+                "/home/service/gsql",
+            ]
+            for path in gsql_paths:
+                if os.path.exists(path):
+                    gsql_path = path
+                    break
+
+            if not os.path.exists(gsql_path):
+                self.log(f"Worker {worker_idx}: gsql 未找到")
+                return False
+
+            while self.running and not self._stop_event.is_set() and elapsed < duration:
+                try:
+                    def run_single_gsql():
+                        env = os.environ.copy()
+                        env["PGPASSWORD"] = self.db_config.password
+                        cmd = [
+                            gsql_path,
+                            "-h", self.db_config.host,
+                            "-p", str(self.db_config.port),
+                            "-d", self.db_config.database,
+                            "-U", self.db_config.username,
+                            "-W", self.db_config.password,
+                            "-r",
+                            "-c", query,
+                        ]
+                        result = subprocess.run(
+                            cmd,
+                            capture_output=True,
+                            text=True,
+                            timeout=30,  # 单次查询超时
+                            env=env,
+                        )
+                        return result.returncode == 0, result.stderr
+
+                    success, stderr = await run_sync(run_single_gsql)
+                    query_count += 1
+
+                    if not success:
+                        error_count += 1
+                        if error_count <= 3:  # 只记录前3次错误
+                            self.log(f"Worker {worker_idx}: 查询失败 - {stderr[:100]}")
+
+                    # 更新进度（每个 worker 共享进度）
+                    step_progress = 20 + int((elapsed / duration) * 60)
+                    await self._update_step_progress(step_id, progress_percent=step_progress)
+
+                except subprocess.TimeoutExpired:
+                    error_count += 1
+                    self.log(f"Worker {worker_idx}: 单次查询超时")
+                except Exception as e:
+                    error_count += 1
+                    self.log(f"Worker {worker_idx}: 查询异常 - {str(e)}")
+
+                await asyncio.sleep(interval_ms / 1000)
+                elapsed += interval_ms / 1000
+
+            self.log(f"Worker {worker_idx}: 完成，执行 {query_count} 次，错误 {error_count} 次")
+            return error_count < query_count * 0.5  # 错误率小于50%视为成功
+
+        # 创建并发 workers
+        tasks = []
+        for i in range(concurrency):
+            task = asyncio.create_task(run_gsql_worker(i))
+            tasks.append(task)
+
+        try:
+            await asyncio.wait_for(asyncio.gather(*tasks, return_exceptions=True), timeout=duration + 60)
+            self.log(f"gsql 故障注入完成")
+            return True
+        except asyncio.TimeoutError:
+            self.log(f"gsql 故障注入超时")
+            return False
+        except Exception as e:
+            self.log(f"gsql 故障注入错误: {str(e)}")
+            return False
+
+    async def _execute_fault_injection_jdbc(self, query: str, concurrency: int, duration: int, interval_ms: int, step_id: int) -> bool:
+        """使用 JDBC 方式执行故障注入（并发查询）"""
+        self.log(f"JDBC 故障注入: 并发={concurrency}, 持续={duration}s, 间隔={interval_ms}ms")
+
+        driver_path = self.db_config.jdbc_driver_path
+        if not driver_path:
+            self.log(f"JDBC 驱动路径未配置")
+            return False
+
+        # 检查驱动文件
+        if not os.path.exists(driver_path):
+            project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+            full_path = os.path.join(project_root, driver_path)
+            if os.path.exists(full_path):
+                driver_path = full_path
+            else:
+                self.log(f"JDBC 驱动文件不存在: {driver_path}")
+                return False
+
+        # JDBC 驱动类名
+        driver_classes = {
+            "postgresql": "org.postgresql.Driver",
+            "opengauss": "org.opengauss.Driver",
+            "gaussdb": "com.huawei.gaussdb.jdbc.Driver",
+        }
+        driver_class = driver_classes.get(self.db_config.db_type, "org.postgresql.Driver")
+
+        # JDBC URL
+        if self.db_config.db_type == "gaussdb":
+            jdbc_url = f"jdbc:gaussdb://{self.db_config.host}:{self.db_config.port}/{self.db_config.database}?authmode=sha256"
+        elif self.db_config.db_type == "opengauss":
+            jdbc_url = f"jdbc:opengauss://{self.db_config.host}:{self.db_config.port}/{self.db_config.database}?authmode=sha256"
+        else:
+            jdbc_url = f"jdbc:{self.db_config.db_type}://{self.db_config.host}:{self.db_config.port}/{self.db_config.database}"
+
+        # 创建 JDBC 连接的同步函数
+        def create_jdbc_connection():
+            try:
+                import jaydebeapi
+                conn = jaydebeapi.connect(
+                    driver_class,
+                    jdbc_url,
+                    [self.db_config.username, self.db_config.password],
+                    driver_path,
+                )
+                return conn
+            except ImportError:
+                raise Exception("jaydebeapi 未安装")
+            except Exception as e:
+                raise e
+
+        # 建立 JDBC 连接池
+        connections = []
+        for i in range(concurrency):
+            try:
+                conn = await run_sync(create_jdbc_connection)
+                connections.append(conn)
+                self.log(f"JDBC 连接 {i + 1}/{concurrency} 建立")
+            except Exception as e:
+                self.log(f"JDBC 连接 {i + 1} 失败: {str(e)}")
+
+        if not connections:
+            self.log("无法建立任何 JDBC 连接")
+            return False
+
+        self.log(f"成功建立 {len(connections)} 个 JDBC 连接")
+
+        # JDBC 查询执行器
+        async def run_jdbc_queries(conn, conn_idx):
+            elapsed = 0
+            query_count = 0
+            error_count = 0
+
+            while self.running and not self._stop_event.is_set() and elapsed < duration:
+                try:
+                    def exec_jdbc_query():
+                        cursor = conn.cursor()
+                        cursor.execute(query)
+                        cursor.close()
+
+                    await run_sync(exec_jdbc_query)
+                    query_count += 1
+
+                    step_progress = 20 + int((elapsed / duration) * 60)
+                    await self._update_step_progress(step_id, progress_percent=step_progress)
+
+                except Exception as e:
+                    error_count += 1
+                    if error_count <= 3:
+                        self.log(f"JDBC 查询错误 (连接{conn_idx}): {str(e)}")
+
+                await asyncio.sleep(interval_ms / 1000)
+                elapsed += interval_ms / 1000
+
+            self.log(f"JDBC 连接 {conn_idx}: 完成，执行 {query_count} 次，错误 {error_count} 次")
+
+        # 并发执行
+        tasks = []
+        for idx, conn in enumerate(connections):
+            task = asyncio.create_task(run_jdbc_queries(conn, idx))
+            tasks.append(task)
+
+        try:
+            await asyncio.wait_for(asyncio.gather(*tasks, return_exceptions=True), timeout=duration + 10)
+
+            # 关闭连接
+            for i, conn in enumerate(connections):
+                try:
+                    await run_sync(conn.close)
+                except Exception as e:
+                    self.log(f"关闭 JDBC 连接 {i + 1} 失败: {str(e)}")
+
+            self.log(f"JDBC 故障注入完成")
+            return True
+
+        except asyncio.TimeoutError:
+            self.log(f"JDBC 故障注入超时")
+            return False
+        except Exception as e:
+            self.log(f"JDBC 故障注入错误: {str(e)}")
             return False
 
     async def stop(self):
