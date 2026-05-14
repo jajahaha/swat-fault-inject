@@ -246,7 +246,7 @@ if [ ! -f "venv/.installed" ]; then
             echo -e "${BLUE}Using architecture suffix: $ARCH_SUFFIX${NC}"
 
             # Architecture-specific packages that need special handling
-            ARCH_PACKAGES="asyncpg greenlet SQLAlchemy psycopg2_binary JPype1 jpype1"
+            ARCH_PACKAGES="asyncpg greenlet SQLAlchemy psycopg2_binary JPype1 jpype1 PyYAML"
 
             for pkg in $ARCH_PACKAGES; do
                 pkg_wheel=$(ls packages/${pkg}*${WHEEL_TAG}*${ARCH_SUFFIX}*.whl 2>/dev/null | head -1)
