@@ -206,10 +206,10 @@ function DrillManagement() {
 
   const getPhaseTag = (phase) => {
     if (!phase) return null
-    const config = PHASE_CONFIG[phase]
+    const config = PHASE_CONFIG[phase] || { label: phase, color: '#8c8c8c' }
     return (
-      <Tag 
-        style={{ 
+      <Tag
+        style={{
           background: config.color + '20',
           color: config.color,
           border: `1px solid ${config.color}`,
@@ -355,7 +355,7 @@ function DrillManagement() {
   const renderStepProgress = (step) => {
     const progress = step.progress_percent || 0
     const phase = step.current_phase
-    const phaseConfig = phase ? PHASE_CONFIG[phase] : null
+    const phaseConfig = phase ? (PHASE_CONFIG[phase] || { label: phase, color: '#8c8c8c', desc: '' }) : null
     
     // 根据阶段设置进度条颜色
     let strokeColor = { '0%': '#667eea', '100%': '#764ba2' }
