@@ -788,7 +788,7 @@ function FaultScenarios() {
 
           <Divider orientation="left">📋 前置环节脚本</Divider>
           <Form.Item name="setup_timeout" label="前置环节超时(秒)">
-            <InputNumber min={10} max={300} style={{ width: 200 }} />
+            <InputNumber min={10} max={100000} style={{ width: 200 }} />
           </Form.Item>
           <Form.List name="setup_scripts">
             {(fields, { add, remove }) => (
@@ -815,7 +815,7 @@ function FaultScenarios() {
                       </Col>
                       <Col span={4}>
                         <Form.Item {...restField} name={[name, 'timeout']} label="超时(秒)">
-                          <InputNumber min={5} max={120} style={{ width: '100%' }} />
+                          <InputNumber min={5} max={100000} style={{ width: '100%' }} />
                         </Form.Item>
                       </Col>
                       <Col span={12}>
@@ -847,7 +847,7 @@ function FaultScenarios() {
             style={{ marginBottom: 16 }}
           />
           <Form.Item name="run_timeout" label="运行环节超时(秒)">
-            <InputNumber min={10} max={600} style={{ width: 200 }} />
+            <InputNumber min={10} max={100000} style={{ width: 200 }} />
           </Form.Item>
           <Form.List name="run_scripts">
             {(fields, { add, remove }) => (
@@ -875,7 +875,7 @@ function FaultScenarios() {
                       </Col>
                       <Col span={4}>
                         <Form.Item {...restField} name={[name, 'timeout']} label="超时(秒)">
-                          <InputNumber min={10} max={300} style={{ width: '100%' }} />
+                          <InputNumber min={10} max={100000} style={{ width: '100%' }} />
                         </Form.Item>
                       </Col>
                       <Col span={4}>
@@ -911,7 +911,7 @@ function FaultScenarios() {
 
           <Divider orientation="left">🧹 清理环节脚本</Divider>
           <Form.Item name="cleanup_timeout" label="清理环节超时(秒)">
-            <InputNumber min={5} max={60} style={{ width: 200 }} />
+            <InputNumber min={5} max={100000} style={{ width: 200 }} />
           </Form.Item>
           <Form.List name="cleanup_scripts">
             {(fields, { add, remove }) => (
@@ -938,7 +938,7 @@ function FaultScenarios() {
                       </Col>
                       <Col span={4}>
                         <Form.Item {...restField} name={[name, 'timeout']} label="超时(秒)">
-                          <InputNumber min={5} max={60} style={{ width: '100%' }} />
+                          <InputNumber min={5} max={100000} style={{ width: '100%' }} />
                         </Form.Item>
                       </Col>
                       <Col span={12}>
