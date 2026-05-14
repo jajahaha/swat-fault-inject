@@ -186,13 +186,20 @@ class DrillExecutor:
 
             scenario_config = scenario.to_dict()
 
-            # 获取数据库配置的部署形态
+            # 获取数据库配置的部署形态和最新配置
             db_result = await session.execute(
                 select(DatabaseConfig).where(DatabaseConfig.id == self.db_config.id)
             )
             db_config_obj = db_result.scalar_one_or_none()
-            deployment_mode = db_config_obj.deployment_mode if db_config_obj else "centralized"
-            self.log(f"数据库部署形态: {deployment_mode}")
+            if db_config_obj:
+                deployment_mode = db_config_obj.deployment_mode
+                # 更新 self.db_config 以反映最新配置（包括 connection_method）
+                self.db_config = db_config_obj
+                self.log(f"数据库部署形态: {deployment_mode}")
+                self.log(f"数据库连接方式: {db_config_obj.connection_method}")
+            else:
+                deployment_mode = "centralized"
+                self.log(f"数据库配置不存在，使用默认形态: {deployment_mode}")
 
         # 1. 前置准备阶段
         self.log(f"步骤 {step.step_order}: 开始前置准备")
