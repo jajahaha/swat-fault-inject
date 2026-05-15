@@ -44,8 +44,39 @@ export const drillApi = {
   delete: (drillId) => api.delete(`/drill/${drillId}`),
 }
 
-// 新增：场景导入导出 API
-export const scenarioIOApi = {
+// 新增：数据库配置导入导出 API
+export const dbConfigIOApi = {
+  // 导入单个配置
+  import: (file) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    return api.post('/database-configs/import', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+  },
+  // 批量导入
+  importBatch: (files) => {
+    const formData = new FormData()
+    files.forEach(file => formData.append('files', file))
+    return api.post('/database-configs/import-batch', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+  },
+  // 导出单个配置
+  export: (configId) => api.get(`/database-configs/export/${configId}`, { responseType: 'blob' }),
+  // 批量导出
+  exportBatch: (configIds) => api.post('/database-configs/export-batch', configIds, { responseType: 'blob' }),
+  // 导出所有
+  exportAll: () => api.get('/database-configs/export-all', { responseType: 'blob' }),
+  // 验证 YAML
+  validate: (file) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    return api.post('/database-configs/validate', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+  },
+}
   // 导入单个场景
   import: (file) => {
     const formData = new FormData()

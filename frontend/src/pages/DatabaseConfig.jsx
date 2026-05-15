@@ -17,18 +17,22 @@ import {
   Row,
   Col,
   Statistic,
+  Upload,
 } from 'antd'
-import { 
-  PlusOutlined, 
-  EditOutlined, 
-  DeleteOutlined, 
-  LinkOutlined, 
+import {
+  PlusOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  LinkOutlined,
   InfoCircleOutlined,
   DatabaseOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
+  UploadOutlined,
+  DownloadOutlined,
+  ExportOutlined,
 } from '@ant-design/icons'
-import { databaseConfigApi } from '../api'
+import { databaseConfigApi, dbConfigIOApi } from '../api'
 
 const DB_TYPE_COLORS = {
   postgresql: { bg: '#e6f7ff', text: '#1890ff', border: '#91d5ff' },
@@ -57,6 +61,8 @@ function DatabaseConfig() {
   const [loading, setLoading] = useState(false)
   const [modalVisible, setModalVisible] = useState(false)
   const [editingConfig, setEditingConfig] = useState(null)
+  const [selectedRowKeys, setSelectedRowKeys] = useState([])
+  const [importModalVisible, setImportModalVisible] = useState(false)
   const [form] = Form.useForm()
   const [selectedDbType, setSelectedDbType] = useState('postgresql')
 
@@ -211,6 +217,71 @@ function DatabaseConfig() {
     method.supported_db_types?.includes(selectedDbType)
   )
 
+  // 导入配置
+  const handleImport = async (file) => {
+    try {
+      const res = await dbConfigIOApi.import(file)
+      message.success(res.data.message)
+      loadConfigs()
+      setImportModalVisible(false)
+    } catch (error) {
+      const detail = error.response?.data?.detail
+      if (typeof detail === 'object' && detail.errors) {
+        message.error('导入失败: ' + detail.errors.join(', '))
+      } else {
+        message.error('导入失败: ' + (detail || error.message))
+      }
+    }
+    return false
+  }
+
+  // 导出单个配置
+  const handleExport = async (configId) => {
+    try {
+      const res = await dbConfigIOApi.export(configId)
+      downloadFile(res.data, `db_config_${configId}.yaml`)
+      message.success('导出成功')
+    } catch (error) {
+      message.error('导出失败')
+    }
+  }
+
+  // 批量导出选中配置
+  const handleExportSelected = async () => {
+    if (selectedRowKeys.length === 0) {
+      message.warning('请先选择要导出的配置')
+      return
+    }
+    try {
+      const res = await dbConfigIOApi.exportBatch(selectedRowKeys)
+      downloadFile(res.data, 'db_configs_export.zip')
+      message.success(`已导出 ${selectedRowKeys.length} 个配置`)
+    } catch (error) {
+      message.error('导出失败')
+    }
+  }
+
+  // 导出所有配置
+  const handleExportAll = async () => {
+    try {
+      const res = await dbConfigIOApi.exportAll()
+      downloadFile(res.data, 'all_db_configs.zip')
+      message.success(`已导出所有配置`)
+    } catch (error) {
+      message.error('导出失败')
+    }
+  }
+
+  // 下载文件辅助函数
+  const downloadFile = (blob, filename) => {
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    a.click()
+    window.URL.revokeObjectURL(url)
+  }
+
   // 统计数据
   const dbTypeStats = configs.reduce((acc, config) => {
     acc[config.db_type] = (acc[config.db_type] || 0) + 1
@@ -321,6 +392,12 @@ function DatabaseConfig() {
         <Space size="small">
           <Button
             size="small"
+            icon={<DownloadOutlined />}
+            onClick={() => handleExport(record.id)}
+            title="导出"
+          />
+          <Button
+            size="small"
             type="text"
             icon={<EditOutlined style={{ color: '#1890ff' }} />}
             onClick={() => handleEdit(record)}
@@ -329,9 +406,9 @@ function DatabaseConfig() {
             title="确定要删除这个配置吗?"
             onConfirm={() => handleDelete(record.id)}
           >
-            <Button 
-              size="small" 
-              type="text" 
+            <Button
+              size="small"
+              type="text"
               danger
               icon={<DeleteOutlined />}
             />
@@ -419,20 +496,41 @@ function DatabaseConfig() {
           boxShadow: '0 2px 12px rgba(0, 0, 0, 0.08)',
         }}
         extra={
-          <Button 
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={handleCreate}
-            style={{
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              border: 'none',
-              borderRadius: '8px',
-              height: '36px',
-              fontWeight: 500,
-            }}
-          >
-            新建配置
-          </Button>
+          <Space>
+            <Button
+              icon={<UploadOutlined />}
+              onClick={() => setImportModalVisible(true)}
+            >
+              导入
+            </Button>
+            <Button
+              icon={<DownloadOutlined />}
+              onClick={handleExportSelected}
+              disabled={selectedRowKeys.length === 0}
+            >
+              导出选中 ({selectedRowKeys.length})
+            </Button>
+            <Button
+              icon={<ExportOutlined />}
+              onClick={handleExportAll}
+            >
+              导出全部
+            </Button>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={handleCreate}
+              style={{
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                border: 'none',
+                borderRadius: '8px',
+                height: '36px',
+                fontWeight: 500,
+              }}
+            >
+              新建配置
+            </Button>
+          </Space>
         }
       >
         <Table
@@ -440,6 +538,10 @@ function DatabaseConfig() {
           dataSource={configs}
           rowKey="id"
           loading={loading}
+          rowSelection={{
+            selectedRowKeys,
+            onChange: setSelectedRowKeys,
+          }}
           pagination={{ 
             pageSize: 10,
             showSizeChanger: false,
@@ -580,6 +682,28 @@ function DatabaseConfig() {
             />
           </Form.Item>
         </Form>
+      </Modal>
+
+      {/* 导入弹窗 */}
+      <Modal
+        title="导入数据库配置"
+        open={importModalVisible}
+        onCancel={() => setImportModalVisible(false)}
+        footer={null}
+        width={500}
+      >
+        <Upload.Dragger
+          accept=".yaml,.yml"
+          beforeUpload={handleImport}
+          multiple
+          showUploadList={false}
+        >
+          <p className="ant-upload-drag-icon">
+            <UploadOutlined style={{ fontSize: '48px', color: '#667eea' }} />
+          </p>
+          <p className="ant-upload-text">点击或拖拽 YAML 文件到此区域导入</p>
+          <p className="ant-upload-hint">支持单个或批量导入，同名配置将自动更新</p>
+        </Upload.Dragger>
       </Modal>
 
       {/* 表格行样式 */}

@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 from app.database import init_db
+from app.api.db_config_import_export import router as db_config_io_router  # 新增：数据库配置导入导出路由
 from app.api.database_config import router as db_config_router
 from app.api.fault_scenarios import router as fault_scenarios_router
 from app.api.injection import router as injection_router
@@ -31,6 +32,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(db_config_io_router)  # 导入导出路由必须在 database_config 路由之前注册
 app.include_router(db_config_router)
 app.include_router(scenario_io_router)  # 导入导出路由必须在 fault_scenarios_router 之前注册
 app.include_router(fault_scenarios_router)
