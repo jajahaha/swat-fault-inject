@@ -15,6 +15,7 @@ import psycopg2
 import subprocess
 import os
 import json
+import time
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 from sqlalchemy import select
@@ -609,8 +610,11 @@ class DrillExecutor:
 
             # 执行查询
             async def run_queries(conn, conn_idx):
-                elapsed = 0
-                while self.running and not self._stop_event.is_set() and elapsed < duration:
+                start_time = time.time()
+                while self.running and not self._stop_event.is_set():
+                    elapsed = time.time() - start_time
+                    if elapsed >= duration:
+                        break
                     try:
                         if method == "asyncpg":
                             await conn.execute(query)
@@ -628,7 +632,6 @@ class DrillExecutor:
                         self.log(f"查询错误 (连接{conn_idx}): {str(e)}")
 
                     await asyncio.sleep(interval_ms / 1000)
-                    elapsed += interval_ms / 1000
 
             # 并发执行
             tasks = []
@@ -664,7 +667,7 @@ class DrillExecutor:
         # gsql 每次执行都是独立进程，使用线程池实现并发
         async def run_gsql_worker(worker_idx: int):
             """单个 gsql worker 执行查询"""
-            elapsed = 0
+            start_time = time.time()
             query_count = 0
             error_count = 0
 
@@ -687,7 +690,10 @@ class DrillExecutor:
                 self.log(f"Worker {worker_idx}: gsql 未找到")
                 return False
 
-            while self.running and not self._stop_event.is_set() and elapsed < duration:
+            while self.running and not self._stop_event.is_set():
+                elapsed = time.time() - start_time
+                if elapsed >= duration:
+                    break
                 try:
                     def run_single_gsql():
                         env = os.environ.copy()
@@ -731,7 +737,6 @@ class DrillExecutor:
                     self.log(f"Worker {worker_idx}: 查询异常 - {str(e)}")
 
                 await asyncio.sleep(interval_ms / 1000)
-                elapsed += interval_ms / 1000
 
             self.log(f"Worker {worker_idx}: 完成，执行 {query_count} 次，错误 {error_count} 次")
             return error_count < query_count * 0.5  # 错误率小于50%视为成功
@@ -822,11 +827,14 @@ class DrillExecutor:
 
         # JDBC 查询执行器
         async def run_jdbc_queries(conn, conn_idx):
-            elapsed = 0
+            start_time = time.time()
             query_count = 0
             error_count = 0
 
-            while self.running and not self._stop_event.is_set() and elapsed < duration:
+            while self.running and not self._stop_event.is_set():
+                elapsed = time.time() - start_time
+                if elapsed >= duration:
+                    break
                 try:
                     def exec_jdbc_query():
                         cursor = conn.cursor()
@@ -845,7 +853,6 @@ class DrillExecutor:
                         self.log(f"JDBC 查询错误 (连接{conn_idx}): {str(e)}")
 
                 await asyncio.sleep(interval_ms / 1000)
-                elapsed += interval_ms / 1000
 
             self.log(f"JDBC 连接 {conn_idx}: 完成，执行 {query_count} 次，错误 {error_count} 次")
 
