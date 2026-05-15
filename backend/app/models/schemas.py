@@ -234,3 +234,22 @@ class ConnectionTestResponse(BaseModel):
     success: bool
     message: str
     server_version: Optional[str] = None
+
+
+# ==================== SQL 控制台 ====================
+
+class SqlExecuteRequest(BaseModel):
+    """SQL 执行请求"""
+    db_config_id: int
+    sql: str
+    limit: Optional[int] = 1000  # 结果行数限制
+
+
+class SqlExecuteResponse(BaseModel):
+    """SQL 执行响应"""
+    success: bool
+    message: Optional[str] = None
+    columns: Optional[List[str]] = None  # 列名
+    rows: Optional[List[List[Any]]] = None  # 行数据
+    row_count: Optional[int] = None  # 返回行数
+    execution_time: Optional[float] = None  # 执行时间（秒）

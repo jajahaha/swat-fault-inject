@@ -1,6 +1,6 @@
 import React from 'react'
 import { Layout as AntLayout, Menu, Typography } from 'antd'
-import { DatabaseOutlined, ThunderboltOutlined, RocketOutlined } from '@ant-design/icons'
+import { DatabaseOutlined, ThunderboltOutlined, RocketOutlined, ApiOutlined } from '@ant-design/icons'
 import { useNavigate, useLocation } from 'react-router-dom'
 
 const { Header, Content, Sider } = AntLayout
@@ -25,6 +25,11 @@ function Layout({ children }) {
       key: '/drill',
       icon: <RocketOutlined />,
       label: '演练管理',
+    },
+    {
+      key: '/sql-console',
+      icon: <ApiOutlined />,
+      label: '连接环境',
     },
   ]
 
@@ -55,7 +60,7 @@ function Layout({ children }) {
           fontSize: '12px',
           fontWeight: 500,
         }}>
-          v1.6.3
+          v1.7.0
         </div>
       </Header>
       <AntLayout>

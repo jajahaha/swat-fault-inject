@@ -9,6 +9,7 @@ from app.api.fault_scenarios import router as fault_scenarios_router
 from app.api.injection import router as injection_router
 from app.api.drill import router as drill_router  # 新增：演练路由
 from app.api.scenario_import_export import router as scenario_io_router  # 新增：导入导出路由
+from app.api.sql_console import router as sql_console_router  # 新增：SQL控制台路由
 
 
 @asynccontextmanager
@@ -38,6 +39,7 @@ app.include_router(scenario_io_router)  # 导入导出路由必须在 fault_scen
 app.include_router(fault_scenarios_router)
 app.include_router(injection_router)
 app.include_router(drill_router)
+app.include_router(sql_console_router)  # SQL控制台路由
 
 
 @app.get("/")
