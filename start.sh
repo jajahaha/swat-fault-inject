@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # SWAT Fault Inject Platform - Start Script
-# Version: 1.7.0
+# Version: 1.7.2
 
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BACKEND_DIR="$PROJECT_DIR/backend"
@@ -25,7 +25,7 @@ if [ -f "$DB_FILE" ]; then
 fi
 
 echo "=========================================="
-echo "  SWAT Fault Inject Platform v1.7.0"
+echo "  SWAT Fault Inject Platform v1.7.2"
 echo "  Starting services..."
 echo "=========================================="
 
