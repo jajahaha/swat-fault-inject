@@ -252,12 +252,15 @@ async def delete_drill(drill_id: int):
                 detail="Cannot delete a running drill"
             )
 
-        # 删除步骤
-        await session.execute(
+        # 先删除该演练的所有步骤
+        steps_result = await session.execute(
             select(DrillStep).where(DrillStep.drill_id == drill_id)
         )
+        steps = steps_result.scalars().all()
+        for step in steps:
+            await session.delete(step)
 
-        # 删除演练
+        # 再删除演练
         await session.delete(drill)
         await session.commit()
 
