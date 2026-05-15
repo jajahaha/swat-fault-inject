@@ -38,6 +38,7 @@ export const drillApi = {
   start: (drillId) => api.post(`/drill/start/${drillId}`),
   stop: (drillId) => api.post(`/drill/stop/${drillId}`),
   getStatus: (drillId) => api.get(`/drill/status/${drillId}`),
+  getBatchStatus: (drillIds) => api.get(`/drill/batch-status?drill_ids=${drillIds.join(',')}`),
   getList: () => api.get('/drill/list'),
   getStepStatus: (stepId) => api.get(`/drill/step-status/${stepId}`),
   delete: (drillId) => api.delete(`/drill/${drillId}`),

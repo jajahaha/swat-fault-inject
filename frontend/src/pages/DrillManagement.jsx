@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useLocation } from 'react-router-dom'
 import {
   Card,
@@ -71,9 +71,71 @@ function DrillManagement() {
   const [selectedSteps, setSelectedSteps] = useState([])
   const [form] = Form.useForm()
 
+  // 统一轮询定时器
+  const pollTimerRef = useRef(null)
+  const isPollingRef = useRef(false)
+
   useEffect(() => {
     loadData()
   }, [location.pathname])
+
+  // 统一轮询所有运行中的演练
+  const startUnifiedPolling = useCallback(() => {
+    if (isPollingRef.current) return
+    isPollingRef.current = true
+
+    const poll = async () => {
+      const runningDrills = drills.filter(d => ['running', 'preparing', 'cleaning'].includes(d.status))
+      if (runningDrills.length === 0) {
+        isPollingRef.current = false
+        if (pollTimerRef.current) {
+          clearInterval(pollTimerRef.current)
+          pollTimerRef.current = null
+        }
+        return
+      }
+
+      // 使用批量查询API，减少请求次数
+      try {
+        const drillIds = runningDrills.map(d => d.id)
+        const response = await drillApi.getBatchStatus(drillIds)
+        const updates = {}
+
+        // 处理批量响应
+        response.data.forEach(drillData => {
+          if (drillData && !drillData.error) {
+            updates[drillData.id] = drillData
+          }
+        })
+
+        // 批量更新状态
+        if (Object.keys(updates).length > 0) {
+          setDrills(prev => prev.map(d => updates[d.id] ? { ...d, ...updates[d.id] } : d))
+        }
+      } catch (error) {
+        // 请求失败时不中断轮询
+      }
+    }
+
+    // 每3秒轮询一次
+    pollTimerRef.current = setInterval(poll, 3000)
+    poll() // 立即执行一次
+  }, [drills])
+
+  // 监听演练状态变化，自动启停轮询
+  useEffect(() => {
+    const runningCount = drills.filter(d => ['running', 'preparing', 'cleaning'].includes(d.status)).length
+    if (runningCount > 0 && !isPollingRef.current) {
+      startUnifiedPolling()
+    }
+    // 清理定时器
+    return () => {
+      if (pollTimerRef.current) {
+        clearInterval(pollTimerRef.current)
+        pollTimerRef.current = null
+      }
+    }
+  }, [drills.filter(d => ['running', 'preparing', 'cleaning'].includes(d.status)).length, startUnifiedPolling])
 
   const loadData = async () => {
     setLoading(true)
@@ -133,8 +195,8 @@ function DrillManagement() {
     try {
       await drillApi.start(drillId)
       message.success('演练已启动')
+      // 重新加载列表，统一轮询会自动启动
       loadData()
-      pollDrillStatus(drillId)
     } catch (error) {
       message.error('启动失败: ' + (error.response?.data?.detail || error.message))
     }
@@ -170,32 +232,11 @@ function DrillManagement() {
     }
   }
 
-  const pollDrillStatus = async (drillId) => {
-    const maxPolls = 300
-    let pollCount = 0
-    const poll = async () => {
-      if (pollCount >= maxPolls) return
-      pollCount++
-      try {
-        const response = await drillApi.getStatus(drillId)
-        setDrills((prev) =>
-          prev.map((d) => (d.id === drillId ? response.data : d))
-        )
-        if (['running', 'preparing', 'cleaning'].includes(response.data.status)) {
-          setTimeout(poll, 1000)
-        }
-      } catch (error) {
-        setTimeout(poll, 2000)
-      }
-    }
-    poll()
-  }
-
   const getStatusTag = (status) => {
     const config = DRILL_STATUS_CONFIG[status] || { label: status, color: 'default' }
     return (
-      <Tag 
-        color={config.color} 
+      <Tag
+        color={config.color}
         icon={config.icon}
         style={{ borderRadius: '6px', padding: '2px 8px' }}
       >
@@ -221,15 +262,19 @@ function DrillManagement() {
     )
   }
 
-  // 统计
-  const runningCount = drills.filter(d => ['running', 'preparing', 'cleaning'].includes(d.status)).length
-  const completedCount = drills.filter(d => d.status === 'completed').length
+  // 使用 useMemo 缓存统计计算
+  const stats = useMemo(() => ({
+    runningCount: drills.filter(d => ['running', 'preparing', 'cleaning'].includes(d.status)).length,
+    completedCount: drills.filter(d => d.status === 'completed').length,
+    totalCount: drills.length,
+    scenarioCount: scenarios.length,
+  }), [drills, scenarios])
 
-  const transferDataSource = scenarios.map((s) => ({
+  const transferDataSource = useMemo(() => scenarios.map((s) => ({
     key: s.id,
     title: s.name,
     description: s.description || s.type,
-  }))
+  })), [scenarios])
 
   const columns = [
     { 
@@ -456,33 +501,33 @@ function DrillManagement() {
           >
             <Statistic
               title="正在执行"
-              value={runningCount}
-              prefix={runningCount > 0 ? <LoadingOutlined spin style={{ color: '#1890ff' }} /> : <ClockCircleOutlined style={{ color: '#1890ff' }} />}
+              value={stats.runningCount}
+              prefix={stats.runningCount > 0 ? <LoadingOutlined spin style={{ color: '#1890ff' }} /> : <ClockCircleOutlined style={{ color: '#1890ff' }} />}
               valueStyle={{ color: '#1890ff', fontWeight: 600 }}
             />
           </Card>
         </Col>
         <Col span={6}>
-          <Card 
+          <Card
             bordered={false}
             style={{ borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}
           >
             <Statistic
               title="已完成"
-              value={completedCount}
+              value={stats.completedCount}
               prefix={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
               valueStyle={{ color: '#52c41a', fontWeight: 600 }}
             />
           </Card>
         </Col>
         <Col span={6}>
-          <Card 
+          <Card
             bordered={false}
             style={{ borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}
           >
             <Statistic
               title="场景库"
-              value={scenarios.length}
+              value={stats.scenarioCount}
               prefix={<ThunderboltOutlined style={{ color: '#8c8c8c' }} />}
               valueStyle={{ color: '#8c8c8c', fontWeight: 600 }}
             />

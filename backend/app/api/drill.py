@@ -10,6 +10,7 @@ Drill API - 演练管理 API 路由
 
 from fastapi import APIRouter, HTTPException
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from datetime import datetime
 from typing import List
 import asyncio
@@ -159,7 +160,7 @@ async def stop_drill(drill_id: int):
 
 @router.get("/status/{drill_id}", response_model=DrillDetailResponse)
 async def get_drill_status(drill_id: int):
-    """获取演练状态和进度（包含步骤详情）"""
+    """获取演练状态和进度（包含步骤详情）- 优化版本"""
     async with async_session() as session:
         # 获取演练
         drill_result = await session.execute(
@@ -169,35 +170,75 @@ async def get_drill_status(drill_id: int):
         if not drill:
             raise HTTPException(status_code=404, detail="Drill not found")
 
-        # 获取步骤列表
+        # 批量获取步骤列表
         steps_result = await session.execute(
             select(DrillStep).where(DrillStep.drill_id == drill_id).order_by(DrillStep.step_order)
         )
         steps = steps_result.scalars().all()
 
-        # 获取场景名称
-        steps_with_names = []
-        for step in steps:
-            scenario_result = await session.execute(
-                select(FaultScenario).where(FaultScenario.id == step.scenario_id)
+        # 批量获取所有相关场景ID
+        scenario_ids = [step.scenario_id for step in steps]
+        if scenario_ids:
+            scenarios_result = await session.execute(
+                select(FaultScenario.id, FaultScenario.name).where(FaultScenario.id.in_(scenario_ids))
             )
-            scenario = scenario_result.scalar_one_or_none()
-            step_dict = step.to_dict()
-            step_dict["scenario_name"] = scenario.name if scenario else "Unknown"
-            steps_with_names.append(step_dict)
+            scenarios = {s.id: s.name for s in scenarios_result.scalars().all()}
+        else:
+            scenarios = {}
 
         # 获取数据库配置名称
         db_result = await session.execute(
-            select(DatabaseConfig).where(DatabaseConfig.id == drill.db_config_id)
+            select(DatabaseConfig.name).where(DatabaseConfig.id == drill.db_config_id)
         )
-        db_config = db_result.scalar_one_or_none()
+        db_name = db_result.scalar_one_or_none() or "Unknown"
+
+        # 构建步骤响应
+        steps_with_names = []
+        for step in steps:
+            step_dict = step.to_dict()
+            step_dict["scenario_name"] = scenarios.get(step.scenario_id, "Unknown")
+            steps_with_names.append(step_dict)
 
         # 构建响应
         response = drill.to_dict()
         response["steps"] = steps_with_names
-        response["db_config_name"] = db_config.name if db_config else "Unknown"
+        response["db_config_name"] = db_name
 
         return response
+
+
+@router.get("/batch-status")
+async def get_batch_status(drill_ids: str):
+    """批量获取演练状态（轻量版，用于轮询）"""
+    # drill_ids 是逗号分隔的ID字符串
+    ids = [int(id) for id in drill_ids.split(',') if id.strip()]
+
+    if not ids:
+        return []
+
+    async with async_session() as session:
+        # 批量查询所有演练
+        drills_result = await session.execute(
+            select(Drill).where(Drill.id.in_(ids))
+        )
+        drills = drills_result.scalars().all()
+        drill_map = {d.id: d.to_dict() for d in drills}
+
+        # 批量查询步骤
+        steps_result = await session.execute(
+            select(DrillStep).where(DrillStep.drill_id.in_(ids))
+        )
+        steps = steps_result.scalars().all()
+
+        # 按演练ID分组步骤
+        for step in steps:
+            if step.drill_id in drill_map:
+                if "steps" not in drill_map[step.drill_id]:
+                    drill_map[step.drill_id]["steps"] = []
+                drill_map[step.drill_id]["steps"].append(step.to_dict())
+
+        # 返回按原始顺序的结果
+        return [drill_map.get(id, {"id": id, "error": "not found"}) for id in ids]
 
 
 @router.get("/list", response_model=List[DrillResponse])
