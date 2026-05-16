@@ -34,6 +34,8 @@ import {
   CheckCircleOutlined,
   LoadingOutlined,
   ClockCircleOutlined,
+  DatabaseOutlined,
+  CodeOutlined,
 } from '@ant-design/icons'
 import { drillApi, faultScenarioApi, databaseConfigApi } from '../api'
 
@@ -552,128 +554,206 @@ function DrillManagement() {
       strokeColor = { '0%': '#fa8c16', '100%': '#ffc53d' }
     }
 
-    // 三阶段配置
+    // 三阶段配置 - 包含详细的脚本信息
     const phases = [
-      { key: 'preparing', label: '前置准备', color: '#1890ff', scripts: scenario.setup_scripts || [], timeout: scenario.setup_timeout || 60 },
-      { key: 'injecting', label: '故障注入', color: '#52c41a', scripts: scenario.run_scripts || [], timeout: scenario.run_timeout || 120, useDefault: scenario.run_scripts?.length === 0 },
-      { key: 'cleaning', label: '清理环境', color: '#fa8c16', scripts: scenario.cleanup_scripts || [], timeout: scenario.cleanup_timeout || 30 },
+      {
+        key: 'preparing',
+        label: '前置准备',
+        color: '#1890ff',
+        scripts: scenario.setup_scripts || [],
+        timeout: scenario.setup_timeout || 60,
+        desc: '创建测试环境、准备数据...'
+      },
+      {
+        key: 'injecting',
+        label: '故障注入',
+        color: '#52c41a',
+        scripts: scenario.run_scripts || [],
+        timeout: scenario.run_timeout || 120,
+        useDefault: scenario.run_scripts?.length === 0,
+        defaultConfig: scenario.config,
+        desc: '执行压力测试...'
+      },
+      {
+        key: 'cleaning',
+        label: '清理环境',
+        color: '#fa8c16',
+        scripts: scenario.cleanup_scripts || [],
+        timeout: scenario.cleanup_timeout || 30,
+        desc: '清除测试数据...'
+      },
     ]
 
+    // 获取当前正在执行的脚本内容
+    const getCurrentExecutingContent = () => {
+      if (!phase || !['running', 'preparing', 'cleaning'].includes(step.status)) return null
+
+      const currentPhase = phases.find(p => p.key === phase)
+      if (!currentPhase) return null
+
+      // 默认注入显示配置参数
+      if (currentPhase.useDefault && currentPhase.defaultConfig) {
+        return {
+          type: 'default',
+          content: `并发连接: ${currentPhase.defaultConfig.concurrency || 50}, 持续时间: ${currentPhase.defaultConfig.duration_seconds || 60}s, 查询间隔: ${currentPhase.defaultConfig.interval_ms || 100}ms`,
+          query: currentPhase.defaultConfig.query_template || 'SELECT count(*) FROM ...'
+        }
+      }
+
+      // 有自定义脚本
+      if (currentPhase.scripts.length > 0) {
+        const firstScript = currentPhase.scripts[0]
+        return {
+          type: firstScript.type || 'sql',
+          content: firstScript.content || '',
+          description: firstScript.description || ''
+        }
+      }
+
+      return { type: 'none', content: '无脚本配置' }
+    }
+
+    const executingContent = getCurrentExecutingContent()
+    const isRunning = ['running', 'preparing', 'cleaning'].includes(step.status)
+
     return (
-      <div key={step.id} style={{ marginBottom: 20, padding: '16px', background: '#fafafa', borderRadius: '8px', border: '1px solid #e8e8e8' }}>
-        {/* 步骤标题和状态 */}
-        <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Text strong style={{ fontSize: '14px' }}>
-            步骤 {step.step_order}: {step.scenario_name}
-          </Text>
+      <div key={step.id} style={{ marginBottom: 16, padding: '12px', background: '#fff', borderRadius: '8px', border: isRunning ? `2px solid ${phaseConfig?.color || '#667eea'}` : '1px solid #e8e8e8' }}>
+        {/* 步骤标题 */}
+        <div style={{ marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Space>
+            <Tag color="blue" style={{ borderRadius: '4px' }}>{step.step_order}</Tag>
+            <Text strong>{step.scenario_name}</Text>
+          </Space>
           <Space>
             {getStatusTag(step.status)}
-            {['running', 'preparing', 'cleaning'].includes(step.status) && phase && getPhaseTag(phase)}
+            {isRunning && phase && getPhaseTag(phase)}
           </Space>
         </div>
 
-        {/* 场景信息 */}
-        <div style={{ marginBottom: 12, padding: '12px', background: '#fff', borderRadius: '6px', border: '1px solid #e8e8e8' }}>
-          <Row gutter={8}>
-            <Col span={6}>
-              <Text type="secondary" style={{ fontSize: '12px' }}>故障类型：</Text>
-              <Tag color="blue" style={{ marginLeft: 4 }}>{scenarioTypeLabel}</Tag>
-            </Col>
-            <Col span={6}>
-              <Text type="secondary" style={{ fontSize: '12px' }}>分类：</Text>
-              <Tag style={{ marginLeft: 4, background: CATEGORY1_CONFIG[scenario.category1]?.bg || '#f5f5f5', color: CATEGORY1_CONFIG[scenario.category1]?.color }}>
-                {category1Label}/{category2Label}/{category3Label}
-              </Tag>
-            </Col>
-            <Col span={12}>
-              <Text type="secondary" style={{ fontSize: '12px' }}>描述：</Text>
-              <Text style={{ fontSize: '12px', marginLeft: 4 }}>{scenario.description || '-'}</Text>
-            </Col>
-          </Row>
-          {/* 默认注入参数 */}
-          {scenario.run_scripts?.length === 0 && scenario.config && (
-            <div style={{ marginTop: 8, fontSize: '12px', color: '#8c8c8c' }}>
-              默认注入参数：并发={scenario.config.concurrency || 50}, 持续={scenario.config.duration_seconds || 60}s, 间隔={scenario.config.interval_ms || 100}ms
+        {/* 当前正在执行的内容 - 高亮显示 */}
+        {isRunning && phase && (
+          <div style={{
+            marginBottom: 12,
+            padding: '10px 12px',
+            background: `${phaseConfig?.color || '#667eea'}10`,
+            borderRadius: '6px',
+            border: `1px solid ${phaseConfig?.color || '#667eea'}40`
+          }}>
+            <div style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <LoadingOutlined spin style={{ color: phaseConfig?.color }} />
+              <Text strong style={{ color: phaseConfig?.color }}>
+                正在执行: {PHASE_CONFIG[phase]?.label || phase}
+              </Text>
+              <Text type="secondary" style={{ fontSize: '12px' }}>
+                {phaseConfig?.desc}
+              </Text>
             </div>
-          )}
-        </div>
+
+            {executingContent && (
+              <div style={{
+                background: '#1e1e1e',
+                padding: '8px 10px',
+                borderRadius: '4px',
+                marginTop: 6
+              }}>
+                {executingContent.type === 'default' && (
+                  <>
+                    <Text style={{ color: '#73d13d', fontSize: '12px' }}>● 默认故障注入参数：</Text>
+                    <Text style={{ color: '#d4d4d4', fontSize: '12px', marginLeft: 8 }}>{executingContent.content}</Text>
+                    <div style={{ marginTop: 4 }}>
+                      <Text style={{ color: '#569cd6', fontSize: '11px' }}>SQL模板：</Text>
+                      <Text style={{ color: '#ce9178', fontSize: '11px', marginLeft: 8 }}>{executingContent.query}</Text>
+                    </div>
+                  </>
+                )}
+                {executingContent.type === 'sql' && (
+                  <>
+                    <Text style={{ color: '#569cd6', fontSize: '12px' }}>● SQL语句：</Text>
+                    <pre style={{
+                      color: '#d4d4d4',
+                      fontSize: '11px',
+                      margin: '4px 0 0 0',
+                      whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-all'
+                    }}>{executingContent.content}</pre>
+                  </>
+                )}
+                {executingContent.type === 'shell' && (
+                  <>
+                    <Text style={{ color: '#c586c0', fontSize: '12px' }}>● Shell命令：</Text>
+                    <pre style={{
+                      color: '#d4d4d4',
+                      fontSize: '11px',
+                      margin: '4px 0 0 0',
+                      whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-all'
+                    }}>{executingContent.content}</pre>
+                  </>
+                )}
+                {executingContent.type === 'none' && (
+                  <Text style={{ color: '#8c8c8c', fontSize: '12px' }}>● {executingContent.content}</Text>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* 进度条 */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: 12 }}>
-          <div style={{ flex: 1, position: 'relative' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: 10 }}>
+          <div style={{ flex: 1 }}>
             <div style={{
-              height: '12px',
+              height: '8px',
               background: '#e8e8e8',
-              borderRadius: '6px',
+              borderRadius: '4px',
               overflow: 'hidden'
             }}>
               <div style={{
                 width: `${progress}%`,
                 height: '100%',
                 background: `linear-gradient(90deg, ${strokeColor['0%']}, ${strokeColor['100%']})`,
-                borderRadius: '6px',
-                transition: 'width 0.3s ease-out',
-                boxShadow: step.status === 'running' ? '0 0 8px rgba(102, 126, 234, 0.4)' : 'none'
+                borderRadius: '4px',
+                transition: 'width 0.3s ease-out'
               }} />
             </div>
           </div>
-          <div style={{
-            minWidth: '50px',
-            textAlign: 'right',
-            fontSize: '15px',
-            fontWeight: 600,
-            color: progress >= 100 ? '#52c41a' : progress > 0 ? '#667eea' : '#8c8c8c'
-          }}>
+          <Text style={{ fontSize: '13px', fontWeight: 500, color: progress >= 100 ? '#52c41a' : '#667eea' }}>
             {progress}%
-          </div>
+          </Text>
         </div>
 
-        {/* 三阶段详情 */}
-        <div style={{ marginTop: 12 }}>
-          <Text type="secondary" style={{ fontSize: '12px', marginBottom: 8 }}>执行环节：</Text>
-          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-            {phases.map((p) => {
-              const isActive = phase === p.key && ['running', 'preparing', 'cleaning'].includes(step.status)
-              const isCompleted = step.status === 'completed' || (step.status === 'cleaning' && (p.key === 'preparing' || p.key === 'injecting')) || (step.status === 'running' && p.key === 'preparing')
-              const scriptCount = p.useDefault ? 1 : p.scripts.length
+        {/* 三阶段概览 */}
+        <div style={{ display: 'flex', gap: 6 }}>
+          {phases.map((p) => {
+            const isActive = phase === p.key && isRunning
+            const isCompleted = step.status === 'completed'
+              || (step.status === 'cleaning' && (p.key === 'preparing' || p.key === 'injecting'))
+              || (step.status === 'running' && p.key === 'preparing')
 
-              return (
-                <div key={p.key} style={{
-                  flex: 1,
-                  padding: '8px 12px',
-                  background: isActive ? `${p.color}15` : '#fff',
-                  border: `1px solid ${isActive ? p.color : '#e8e8e8'}`,
-                  borderRadius: '6px',
-                  transition: 'all 0.2s'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: '50%',
-                      background: isCompleted ? '#52c41a' : isActive ? p.color : '#d9d9d9',
-                      animation: isActive ? 'pulse 1.5s infinite' : 'none'
-                    }} />
-                    <Text strong style={{ fontSize: '12px', color: isActive ? p.color : '#666' }}>
-                      {p.label}
-                    </Text>
-                    {isActive && <LoadingOutlined style={{ fontSize: '12px', color: p.color }} />}
-                  </div>
-                  <Text type="secondary" style={{ fontSize: '11px', marginTop: 4 }}>
-                    {p.useDefault ? '默认注入' : scriptCount > 0 ? `${scriptCount} 个脚本` : '无脚本'} / 超时 {p.timeout}s
+            return (
+              <div key={p.key} style={{
+                flex: 1,
+                padding: '6px 8px',
+                background: isActive ? p.color : isCompleted ? '#f6ffed' : '#fafafa',
+                borderRadius: '4px',
+                border: `1px solid ${isActive ? p.color : isCompleted ? '#b7eb8f' : '#d9d9d9'}`,
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <span style={{
+                    width: 6, height: 6, borderRadius: '50%',
+                    background: isCompleted ? '#52c41a' : isActive ? '#fff' : '#bfbfbf'
+                  }} />
+                  <Text style={{ fontSize: '11px', fontWeight: isActive ? 600 : 400, color: isActive ? '#fff' : '#666' }}>
+                    {p.label}
                   </Text>
+                  {isActive && <LoadingOutlined spin style={{ fontSize: '10px', color: '#fff' }} />}
                 </div>
-              )
-            })}
-          </div>
+                <Text style={{ fontSize: '10px', color: isActive ? '#fff90' : '#8c8c8c', marginTop: 2 }}>
+                  {p.useDefault ? '默认' : p.scripts.length > 0 ? `${p.scripts.length}脚本` : '无'} / {p.timeout}s
+                </Text>
+              </div>
+            )
+          })}
         </div>
-
-        <style>{`
-          @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.4; }
-          }
-        `}</style>
       </div>
     )
   }
@@ -883,71 +963,120 @@ function DrillManagement() {
         open={detailModalVisible}
         onCancel={() => setDetailModalVisible(false)}
         footer={<Button onClick={() => setDetailModalVisible(false)} style={{ borderRadius: '8px' }}>关闭</Button>}
-        width={800}
+        width={900}
       >
         {selectedDrill && (
           <div>
-            {/* 演练基本信息卡片 - 放在最上面 */}
+            {/* 演练概述 - 放在最上面 */}
             <Card
               size="small"
-              style={{ marginBottom: 16, borderRadius: '8px', background: '#fafafa' }}
+              style={{ marginBottom: 16, borderRadius: '8px', background: '#f6ffed' }}
               title={
                 <Space>
                   <RocketOutlined style={{ color: '#667eea' }} />
-                  <Text strong>{selectedDrill.name}</Text>
-                  {getStatusTag(selectedDrill.status)}
-                  {['running', 'preparing', 'cleaning'].includes(selectedDrill.status) && selectedDrill.current_phase && getPhaseTag(selectedDrill.current_phase)}
+                  <Text strong style={{ fontSize: '16px' }}>演练概述</Text>
                 </Space>
               }
             >
+              {/* 第一行：名称、状态、当前阶段 */}
+              <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
+                <Text strong style={{ fontSize: '15px' }}>{selectedDrill.name}</Text>
+                {getStatusTag(selectedDrill.status)}
+                {['running', 'preparing', 'cleaning'].includes(selectedDrill.status) && selectedDrill.current_phase && getPhaseTag(selectedDrill.current_phase)}
+              </div>
+
+              {/* 第二行：故障类型、描述 */}
+              {selectedDrill.steps && selectedDrill.steps[0]?.scenario && (
+                <Row gutter={16} style={{ marginBottom: 12 }}>
+                  <Col span={4}>
+                    <Text type="secondary">故障类型：</Text>
+                    <Tag color="blue" style={{ marginLeft: 4 }}>
+                      {SCENARIO_TYPE_CONFIG[selectedDrill.steps[0].scenario.type]?.label || selectedDrill.steps[0].scenario.type}
+                    </Tag>
+                  </Col>
+                  <Col span={20}>
+                    <Text type="secondary">演练描述：</Text>
+                    <Text>{selectedDrill.description || selectedDrill.steps[0].scenario.description || '-'}</Text>
+                  </Col>
+                </Row>
+              )}
+
+              {/* 第三行：连接数据库、执行模式、总进度 */}
               <Row gutter={16}>
                 <Col span={6}>
-                  <Text type="secondary">执行模式：</Text>
-                  <Tag color={selectedDrill.execution_mode === 'sequential' ? 'blue' : 'purple'} style={{ marginLeft: 4 }}>
-                    {selectedDrill.execution_mode === 'sequential' ? '顺序执行' : '并行执行'}
+                  <Text type="secondary">连接数据库：</Text>
+                  <Tag color="green" style={{ marginLeft: 4 }}>
+                    <DatabaseOutlined style={{ marginRight: 4 }} />
+                    {selectedDrill.db_config_name}
                   </Tag>
                 </Col>
-                <Col span={6}>
-                  <Text type="secondary">目标数据库：</Text>
-                  <Text>{selectedDrill.db_config_name}</Text>
+                <Col span={4}>
+                  <Text type="secondary">执行模式：</Text>
+                  <Tag color={selectedDrill.execution_mode === 'sequential' ? 'blue' : 'purple'} style={{ marginLeft: 4 }}>
+                    {selectedDrill.execution_mode === 'sequential' ? '顺序' : '并行'}
+                  </Tag>
                 </Col>
                 <Col span={6}>
                   <Text type="secondary">总进度：</Text>
                   <Progress
                     percent={selectedDrill.progress_percent || 0}
                     size="small"
-                    style={{ marginLeft: 8, width: 100 }}
+                    style={{ marginLeft: 8, width: 120 }}
                     strokeColor={{ '0%': '#667eea', '100%': '#764ba2' }}
                   />
                 </Col>
-                <Col span={6}>
+                <Col span={4}>
                   <Text type="secondary">步骤：</Text>
-                  <Text>{selectedDrill.current_step || 0}/{selectedDrill.total_steps}</Text>
+                  <Text strong>{selectedDrill.current_step || 0}/{selectedDrill.total_steps}</Text>
                 </Col>
-              </Row>
-              <Row gutter={16} style={{ marginTop: 8 }}>
-                <Col span={12}>
-                  <Text type="secondary">开始时间：</Text>
-                  <Text>{selectedDrill.started_at ? new Date(selectedDrill.started_at).toLocaleString() : '-'}</Text>
-                </Col>
-                <Col span={12}>
-                  <Text type="secondary">结束时间：</Text>
-                  <Text>{selectedDrill.ended_at ? new Date(selectedDrill.ended_at).toLocaleString() : '-'}</Text>
+                <Col span={4}>
+                  <Text type="secondary">耗时：</Text>
+                  <Text>{
+                    selectedDrill.started_at && selectedDrill.ended_at
+                      ? Math.round((new Date(selectedDrill.ended_at) - new Date(selectedDrill.started_at)) / 1000) + 's'
+                      : selectedDrill.started_at
+                        ? Math.round((new Date() - new Date(selectedDrill.started_at)) / 1000) + 's'
+                        : '-'
+                  }</Text>
                 </Col>
               </Row>
             </Card>
 
-            {/* 执行日志 - 放在中间，实时刷新 */}
+            {/* 演练步骤 - 放在中间，显示正在执行的故障阶段和具体语句 */}
             <Card
               size="small"
               style={{ marginBottom: 16, borderRadius: '8px' }}
               title={
                 <Space>
+                  <OrderedListOutlined style={{ color: '#667eea' }} />
+                  <Text strong>演练步骤</Text>
+                  {['running', 'preparing', 'cleaning'].includes(selectedDrill.status) && (
+                    <Tag color="processing">
+                      <LoadingOutlined spin style={{ marginRight: 4 }} />
+                      正在执行
+                    </Tag>
+                  )}
+                </Space>
+              }
+            >
+              {selectedDrill.steps && selectedDrill.steps.length > 0 ? (
+                selectedDrill.steps.map((step) => renderStepProgress(step))
+              ) : (
+                <Text type="secondary">暂无步骤信息</Text>
+              )}
+            </Card>
+
+            {/* 执行日志 - 放在最后 */}
+            <Card
+              size="small"
+              style={{ borderRadius: '8px' }}
+              title={
+                <Space>
                   <Text>执行日志</Text>
                   {['running', 'preparing', 'cleaning'].includes(selectedDrill.status) && (
-                    <Tag color="processing" style={{ marginLeft: 8 }}>
+                    <Tag color="processing">
                       <LoadingOutlined spin style={{ marginRight: 4 }} />
-                      实时更新
+                      实时刷新
                     </Tag>
                   )}
                 </Space>
@@ -960,37 +1089,19 @@ function DrillManagement() {
                   color: '#d4d4d4',
                   padding: '12px',
                   borderRadius: '6px',
-                  maxHeight: '300px',
-                  minHeight: '100px',
+                  maxHeight: '350px',
+                  minHeight: '80px',
                   overflow: 'auto',
                   whiteSpace: 'pre-wrap',
                   wordBreak: 'break-word',
-                  fontFamily: 'monospace',
+                  fontFamily: 'Consolas, Monaco, monospace',
                   fontSize: '12px',
-                  lineHeight: '1.5',
+                  lineHeight: '1.6',
                   margin: 0,
                 }}
               >
                 {selectedDrill.log || '暂无日志记录'}
               </pre>
-            </Card>
-
-            {/* 步骤进度 - 放在最后 */}
-            <Card
-              size="small"
-              style={{ borderRadius: '8px' }}
-              title={
-                <Space>
-                  <OrderedListOutlined style={{ color: '#667eea' }} />
-                  <Text>步骤进度</Text>
-                </Space>
-              }
-            >
-              {selectedDrill.steps && selectedDrill.steps.length > 0 ? (
-                selectedDrill.steps.map((step) => renderStepProgress(step))
-              ) : (
-                <Text type="secondary">暂无步骤信息</Text>
-              )}
             </Card>
           </div>
         )}

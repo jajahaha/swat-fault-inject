@@ -238,17 +238,30 @@ class DrillExecutor:
 
         # 检查是否有自定义运行脚本
         run_scripts = scenario_config.get("run_scripts", [])
-        filtered_run_scripts = self._filter_scripts_by_mode(run_scripts, deployment_mode)
 
-        if filtered_run_scripts:
-            # 使用自定义运行脚本
-            self.log(f"步骤 {step.step_order}: 使用自定义运行脚本")
-            run_success = await self._execute_scripts(
-                step_id,
-                filtered_run_scripts,
-                "run",
-                scenario_config.get("run_timeout", 120)
-            )
+        if run_scripts:
+            # 检查是否有混合模式的脚本（需要并发执行）
+            modes = set(s.get("mode", "all") for s in run_scripts)
+            has_mixed_modes = "centralized" in modes and "distributed" in modes
+
+            if has_mixed_modes:
+                # 混合模式场景（如DDL锁阻塞）：并发执行所有脚本
+                self.log(f"步骤 {step.step_order}: 混合模式运行脚本，并发执行")
+                run_success = await self._execute_run_scripts_concurrently(
+                    step_id,
+                    run_scripts,
+                    scenario_config.get("run_timeout", 120)
+                )
+            else:
+                # 单一模式：按部署形态过滤后顺序执行
+                filtered_run_scripts = self._filter_scripts_by_mode(run_scripts, deployment_mode)
+                self.log(f"步骤 {step.step_order}: 使用自定义运行脚本")
+                run_success = await self._execute_scripts(
+                    step_id,
+                    filtered_run_scripts,
+                    "run",
+                    scenario_config.get("run_timeout", 120)
+                )
         else:
             # 使用默认故障注入（基于 config 参数）
             self.log(f"步骤 {step.step_order}: 使用默认故障注入")
@@ -324,6 +337,121 @@ class DrillExecutor:
                 return False
 
         return True
+
+    async def _execute_run_scripts_concurrently(self, step_id: int, scripts: List[Dict], timeout: int) -> bool:
+        """并发执行运行脚本（用于混合模式场景如DDL锁阻塞）
+
+        centralized脚本先启动（后台运行），distributed脚本并发执行
+        """
+        # 分离 centralized 和 distributed 脚本
+        centralized_scripts = [s for s in scripts if s.get("mode", "all") == "centralized"]
+        distributed_scripts = [s for s in scripts if s.get("mode", "all") == "distributed"]
+        all_mode_scripts = [s for s in scripts if s.get("mode", "all") == "all"]
+
+        self.log(f"并发执行脚本: centralized={len(centralized_scripts)}, distributed={len(distributed_scripts)}, all={len(all_mode_scripts)}")
+
+        tasks = []
+
+        # 1. 先启动 centralized 脚本（如DDL事务）
+        for script in centralized_scripts:
+            self.log(f"启动 centralized 脚本: {script.get('description', '未命名')}")
+            task = asyncio.create_task(
+                self._execute_single_script_with_iterations(script, timeout)
+            )
+            tasks.append(task)
+
+        # 2. 等待一小段时间让 centralized 脚本获取锁
+        await asyncio.sleep(0.5)
+
+        # 3. 启动 distributed 脚本（如IUD操作）并发执行
+        for script in distributed_scripts:
+            self.log(f"启动 distributed 脚本: {script.get('description', '未命名')}")
+            task = asyncio.create_task(
+                self._execute_single_script_with_iterations(script, timeout)
+            )
+            tasks.append(task)
+
+        # 4. 启动 all 模式脚本
+        for script in all_mode_scripts:
+            self.log(f"启动 all 模式脚本: {script.get('description', '未命名')}")
+            task = asyncio.create_task(
+                self._execute_single_script_with_iterations(script, timeout)
+            )
+            tasks.append(task)
+
+        # 等待所有任务完成（使用 gather 收集结果）
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        # 检查结果
+        success_count = sum(1 for r in results if r is True or (not isinstance(r, Exception) and r))
+        total_count = len(results)
+
+        self.log(f"并发脚本执行完成: {success_count}/{total_count} 成功")
+
+        # 对于锁阻塞场景，distributed脚本可能超时失败（被阻塞），这是预期行为
+        # 只要 centralized 脚本成功执行即可
+        return success_count >= len(centralized_scripts)
+
+    async def _execute_single_script_with_iterations(self, script: Dict, timeout: int) -> bool:
+        """执行单个脚本（支持多次迭代执行）
+
+        Args:
+            script: 脚本配置
+            timeout: 单次执行超时时间
+
+        Returns:
+            执行是否成功
+        """
+        script_type = script.get("type", "sql")
+        content = script.get("content", "")
+        script_timeout = script.get("timeout", timeout)
+        iterations = script.get("iterations", 1)
+        description = script.get("description", "未命名脚本")
+
+        self.log(f"执行脚本: {description}, 类型={script_type}, 迭代={iterations}次")
+
+        success_count = 0
+        for i in range(iterations):
+            if self._stop_event.is_set():
+                self.log(f"脚本 '{description}' 收到停止信号，终止迭代")
+                break
+
+            try:
+                if script_type == "sql":
+                    success = await self._execute_sql(content, script_timeout)
+                elif script_type == "shell":
+                    success = await self._execute_shell(content, script_timeout)
+                else:
+                    self.log(f"不支持的脚本类型: {script_type}")
+                    return False
+
+                if success:
+                    success_count += 1
+                    # 对于被阻塞的操作，可能需要等待，不需要每次都记录
+                    if iterations <= 10 or i % 10 == 0:
+                        self.log(f"脚本 '{description}' 第 {i+1}/{iterations} 次执行成功")
+                else:
+                    # 对于锁阻塞场景，失败可能是预期行为（被阻塞超时）
+                    self.log(f"脚本 '{description}' 第 {i+1}/{iterations} 次执行失败")
+
+            except asyncio.TimeoutError:
+                self.log(f"脚本 '{description}' 第 {i+1} 次执行超时")
+            except Exception as e:
+                self.log(f"脚本 '{description}' 第 {i+1} 次执行异常: {str(e)}")
+
+            # 迭代间隔（如果有）
+            interval = script.get("interval_ms", 0)
+            if interval > 0 and i < iterations - 1:
+                await asyncio.sleep(interval / 1000)
+
+        # 判断成功：对于锁阻塞场景，只要执行过就算成功（distributed脚本可能被阻塞）
+        # 对于 centralized 脚本（DDL），必须成功
+        mode = script.get("mode", "all")
+        if mode == "centralized":
+            return success_count > 0
+        else:
+            # distributed 脚本：即使失败也算执行成功（因为被阻塞是预期行为）
+            return True
 
     async def _execute_sql(self, sql: str, timeout: int) -> bool:
         """执行 SQL 脚本"""

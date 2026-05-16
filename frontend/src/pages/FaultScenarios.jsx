@@ -165,6 +165,7 @@ const SCENARIO_TYPE_CONFIG = {
   slow_query: { label: '慢查询', color: '#722ed1', bg: '#f9f0ff' },
   connection_exhaustion: { label: '连接耗尽', color: '#fa8c16', bg: '#fff7e6' },
   io_pressure: { label: 'IO压力', color: '#13c2c2', bg: '#e6fffb' },
+  ddl_lock_blocking: { label: 'DDL锁阻塞', color: '#eb2f96', bg: '#fff0f6' },
 }
 
 function FaultScenarios() {

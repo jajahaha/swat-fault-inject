@@ -337,6 +337,81 @@ async def init_db():
             )
             session.add(slow_query_scenario)
 
+        # 添加DDL锁阻塞测试场景
+        result = await session.execute(
+            select(FaultScenario).where(FaultScenario.name == "DDL锁阻塞测试")
+        )
+        if result.scalar_one_or_none() is None:
+            ddl_lock_scenario = FaultScenario(
+                name="DDL锁阻塞测试",
+                type="ddl_lock_blocking",
+                category1="slow",
+                category2="lock",
+                category3="table",
+                description="执行DDL操作获取表级锁，阻塞后续INSERT/UPDATE/DELETE操作，模拟DDL导致的锁等待场景",
+                config=json.dumps({
+                    "concurrency": 10,
+                    "duration_seconds": 60,
+                    "interval_ms": 100
+                }),
+                setup_scripts=json.dumps([
+                    {
+                        "type": "sql",
+                        "mode": "all",
+                        "description": "创建测试表并插入初始数据",
+                        "content": "DROP TABLE IF EXISTS ddl_lock_test; CREATE TABLE ddl_lock_test (id SERIAL PRIMARY KEY, name VARCHAR(100), value INT); INSERT INTO ddl_lock_test (name, value) SELECT 'test' || i::text, i FROM generate_series(1, 100) i;",
+                        "timeout": 30
+                    }
+                ]),
+                run_scripts=json.dumps([
+                    {
+                        "type": "sql",
+                        "mode": "centralized",
+                        "description": "启动DDL事务获取表级锁",
+                        "content": "BEGIN; ALTER TABLE ddl_lock_test ADD COLUMN new_column VARCHAR(50); SELECT pg_sleep(60); COMMIT;",
+                        "timeout": 120,
+                        "iterations": 1
+                    },
+                    {
+                        "type": "sql",
+                        "mode": "distributed",
+                        "description": "并发执行INSERT被DDL锁阻塞",
+                        "content": "INSERT INTO ddl_lock_test (name, value) VALUES ('blocked_insert', 999);",
+                        "timeout": 30,
+                        "iterations": 100
+                    },
+                    {
+                        "type": "sql",
+                        "mode": "distributed",
+                        "description": "并发执行UPDATE被DDL锁阻塞",
+                        "content": "UPDATE ddl_lock_test SET value = value + 1 WHERE id = 1;",
+                        "timeout": 30,
+                        "iterations": 100
+                    },
+                    {
+                        "type": "sql",
+                        "mode": "distributed",
+                        "description": "并发执行DELETE被DDL锁阻塞",
+                        "content": "DELETE FROM ddl_lock_test WHERE id = 100;",
+                        "timeout": 30,
+                        "iterations": 100
+                    }
+                ]),
+                cleanup_scripts=json.dumps([
+                    {
+                        "type": "sql",
+                        "mode": "all",
+                        "description": "删除测试表",
+                        "content": "DROP TABLE IF EXISTS ddl_lock_test;",
+                        "timeout": 10
+                    }
+                ]),
+                setup_timeout=30,
+                run_timeout=120,
+                cleanup_timeout=10,
+            )
+            session.add(ddl_lock_scenario)
+
         await session.commit()
 
         # 清理僵尸演练：服务重启时将卡住的演练状态改为 stopped
