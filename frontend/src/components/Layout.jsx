@@ -60,7 +60,7 @@ function Layout({ children }) {
           fontSize: '12px',
           fontWeight: 500,
         }}>
-          v1.7.6
+          v1.7.7
         </div>
       </Header>
       <AntLayout>

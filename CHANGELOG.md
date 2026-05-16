@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.7.7] - 2026-05-16
+
+### Changed
+
+- **版本号统一升级**
+  - 所有版本号从1.7.6升级到1.7.7
+  - 更新README.md、CHANGELOG.md、设计文档等
+
+### Technical
+
+- 版本号更新文件：start.sh, stop.sh, README.md, CHANGELOG.md, package.json, Layout.jsx, main.py
+
 ## [1.7.6] - 2026-05-16
 
 ### Added

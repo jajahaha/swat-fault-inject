@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # SWAT Fault Inject Platform - Stop Script
-# Version: 1.7.6
+# Version: 1.7.7
 
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 LOG_DIR="$PROJECT_DIR/logs"
@@ -13,7 +13,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 echo "=========================================="
-echo "  SWAT Fault Inject Platform v1.7.6"
+echo "  SWAT Fault Inject Platform v1.7.7"
 echo "  Stopping services..."
 echo "=========================================="
 
