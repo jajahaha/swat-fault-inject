@@ -186,6 +186,7 @@ class DrillStepResponse(BaseModel):
     step_order: int
     scenario_id: int
     scenario_name: Optional[str] = None  # 包含场景名称
+    scenario: Optional[Dict[str, Any]] = None  # 包含完整场景信息
     status: str
     progress_percent: Optional[int] = None
     current_phase: Optional[str] = None

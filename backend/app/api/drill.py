@@ -160,7 +160,7 @@ async def stop_drill(drill_id: int):
 
 @router.get("/status/{drill_id}", response_model=DrillDetailResponse)
 async def get_drill_status(drill_id: int):
-    """获取演练状态和进度（包含步骤详情）- 优化版本"""
+    """获取演练状态和进度（包含步骤详情和完整场景信息）"""
     async with async_session() as session:
         # 获取演练
         drill_result = await session.execute(
@@ -176,13 +176,13 @@ async def get_drill_status(drill_id: int):
         )
         steps = steps_result.scalars().all()
 
-        # 批量获取所有相关场景ID
+        # 批量获取所有相关场景的完整信息
         scenario_ids = [step.scenario_id for step in steps]
         if scenario_ids:
             scenarios_result = await session.execute(
-                select(FaultScenario.id, FaultScenario.name).where(FaultScenario.id.in_(scenario_ids))
+                select(FaultScenario).where(FaultScenario.id.in_(scenario_ids))
             )
-            scenarios = {s.id: s.name for s in scenarios_result.scalars().all()}
+            scenarios = {s.id: s.to_dict() for s in scenarios_result.scalars().all()}
         else:
             scenarios = {}
 
@@ -192,16 +192,18 @@ async def get_drill_status(drill_id: int):
         )
         db_name = db_result.scalar_one_or_none() or "Unknown"
 
-        # 构建步骤响应
-        steps_with_names = []
+        # 构建步骤响应，包含完整场景信息
+        steps_with_scenarios = []
         for step in steps:
             step_dict = step.to_dict()
-            step_dict["scenario_name"] = scenarios.get(step.scenario_id, "Unknown")
-            steps_with_names.append(step_dict)
+            # 包含完整的场景信息
+            step_dict["scenario"] = scenarios.get(step.scenario_id, {"name": "Unknown"})
+            step_dict["scenario_name"] = scenarios.get(step.scenario_id, {}).get("name", "Unknown")
+            steps_with_scenarios.append(step_dict)
 
         # 构建响应
         response = drill.to_dict()
-        response["steps"] = steps_with_names
+        response["steps"] = steps_with_scenarios
         response["db_config_name"] = db_name
 
         return response

@@ -334,46 +334,83 @@ function FaultScenarios() {
       setModalVisible(false)
       loadData()
     } catch (error) {
-      message.error('操作失败')
+      // 表单验证错误
+      if (error.errorFields) {
+        message.error('请检查表单填写是否正确')
+        return
+      }
+      // API错误
+      const detail = error.response?.data?.detail || error.message || '未知错误'
+      message.error('操作失败: ' + detail)
     }
   }
 
-  // 执行按钮：自动创建演练并启动
+  // 执行按钮：自动创建演练并启动，然后跳转到演练详情
   const handleExecute = async (scenario) => {
     if (dbConfigs.length === 0) {
       message.error('请先配置数据库连接')
       return
     }
 
-    try {
-      // 使用第一个数据库配置
-      const dbConfigId = dbConfigs[0].id
+    // 弹窗让用户选择目标数据库
+    Modal.confirm({
+      title: '执行故障场景',
+      icon: <PlayCircleOutlined style={{ color: '#667eea' }} />,
+      content: (
+        <div style={{ marginTop: 16 }}>
+          <Text>场景名称：<Text strong>{scenario.name}</Text></Text>
+          <br />
+          <Text type="secondary" style={{ fontSize: '12px' }}>
+            分类：{CATEGORY1_CONFIG[scenario.category1]?.label || '-'} /
+            {CATEGORY2_CONFIG[scenario.category1]?.[scenario.category2]?.label || '-'} /
+            {CATEGORY3_CONFIG[scenario.category1]?.[scenario.category2]?.[scenario.category3]?.label || '-'}
+          </Text>
+          <Divider style={{ margin: '12px 0' }} />
+          <Text>将创建演练并自动启动执行</Text>
+        </div>
+      ),
+      okText: '确认执行',
+      cancelText: '取消',
+      okButtonProps: {
+        style: {
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          border: 'none',
+        }
+      },
+      onOk: async () => {
+        try {
+          // 使用第一个数据库配置
+          const dbConfigId = dbConfigs[0].id
 
-      // 自动生成演练名称
-      const drillName = `${scenario.name} - ${new Date().toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}`
+          // 自动生成演练名称
+          const drillName = `${scenario.name} - ${new Date().toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}`
 
-      // 创建演练
-      const drillData = {
-        name: drillName,
-        description: `自动创建：故障场景"${scenario.name}"的单场景演练`,
-        execution_mode: 'sequential',
-        db_config_id: dbConfigId,
-        steps: [
-          { scenario_id: scenario.id, step_order: 1 }
-        ]
+          // 创建演练
+          const drillData = {
+            name: drillName,
+            description: `自动创建：故障场景"${scenario.name}"的单场景演练`,
+            execution_mode: 'sequential',
+            db_config_id: dbConfigId,
+            steps: [
+              { scenario_id: scenario.id, step_order: 1 }
+            ]
+          }
+
+          const createRes = await drillApi.create(drillData)
+          const drillId = createRes.data.id
+
+          // 立即启动演练
+          await drillApi.start(drillId)
+
+          message.success('演练已创建并启动')
+
+          // 跳转到演练管理页面，并带上演练ID参数
+          window.location.href = `/drill?highlight=${drillId}`
+        } catch (error) {
+          message.error('执行失败: ' + (error.response?.data?.detail || error.message))
+        }
       }
-
-      const createRes = await drillApi.create(drillData)
-      const drillId = createRes.data.id
-
-      // 立即启动演练
-      await drillApi.start(drillId)
-
-      message.success(`演练已创建并启动: ${drillName}`)
-      message.info('请在"演练管理"页面查看执行进度', 3)
-    } catch (error) {
-      message.error('执行失败: ' + (error.response?.data?.detail || error.message))
-    }
+    })
   }
 
   // 统计：按一级分类计算数量

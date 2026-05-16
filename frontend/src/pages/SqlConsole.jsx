@@ -21,6 +21,7 @@ import {
   ClockCircleOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
+  EyeOutlined,
 } from '@ant-design/icons'
 import { databaseConfigApi, sqlConsoleApi } from '../api'
 
@@ -98,6 +99,34 @@ function SqlConsole() {
     { label: 'SELECT 1', sql: 'SELECT 1' },
     { label: '查看表', sql: "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' LIMIT 20" },
     { label: '当前时间', sql: 'SELECT NOW()' },
+    {
+      label: '实时会话',
+      sql: `SELECT
+  pid,
+  usename as 用户,
+  application_name as 应用,
+  client_addr as 客户端地址,
+  state as 状态,
+  query_start as 查询开始时间,
+  LEFT(query, 50) as 查询片段
+FROM pg_stat_activity
+WHERE state IN ('active', 'idle')
+ORDER BY query_start DESC
+LIMIT 20`,
+      color: 'processing'
+    },
+    {
+      label: '活跃连接',
+      sql: `SELECT
+  usename as 用户,
+  COUNT(*) as 连接数,
+  COUNT(CASE WHEN state = 'active' THEN 1 END) as 活跃数,
+  COUNT(CASE WHEN state = 'idle' THEN 1 END) as 空闲数
+FROM pg_stat_activity
+GROUP BY usename
+ORDER BY 连接数 DESC`,
+      color: 'warning'
+    },
   ]
 
   const handleQuickSql = (sqlText) => {
@@ -199,9 +228,21 @@ function SqlConsole() {
                 <Button
                   key={example.label}
                   size="small"
+                  type={example.color ? 'primary' : 'default'}
+                  ghost={example.color === 'processing'}
                   onClick={() => handleQuickSql(example.sql)}
-                  style={{ borderRadius: '6px' }}
+                  style={{
+                    borderRadius: '6px',
+                    background: example.color === 'processing' ? '#e6f7ff' :
+                               example.color === 'warning' ? '#fff7e6' : undefined,
+                    borderColor: example.color === 'processing' ? '#1890ff' :
+                                example.color === 'warning' ? '#fa8c16' : undefined,
+                    color: example.color === 'processing' ? '#1890ff' :
+                          example.color === 'warning' ? '#fa8c16' : undefined,
+                  }}
                 >
+                  {example.label === '实时会话' && <EyeOutlined style={{ marginRight: 4 }} />}
+                  {example.label === '活跃连接' && <DatabaseOutlined style={{ marginRight: 4 }} />}
                   {example.label}
                 </Button>
               ))}

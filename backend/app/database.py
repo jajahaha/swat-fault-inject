@@ -338,3 +338,27 @@ async def init_db():
             session.add(slow_query_scenario)
 
         await session.commit()
+
+        # 清理僵尸演练：服务重启时将卡住的演练状态改为 stopped
+        zombie_result = await session.execute(
+            select(Drill).where(Drill.status.in_(["preparing", "running", "cleaning"]))
+        )
+        zombie_drills = zombie_result.scalars().all()
+        if zombie_drills:
+            now = datetime.utcnow().isoformat() + "Z"
+            for drill in zombie_drills:
+                drill.status = "stopped"
+                drill.ended_at = datetime.utcnow()
+                drill.log = (drill.log or "") + f"\n[{datetime.utcnow().strftime('%H:%M:%S')}] 服务重启，演练自动停止"
+            # 同时更新步骤状态
+            for drill in zombie_drills:
+                step_result = await session.execute(
+                    select(DrillStep).where(DrillStep.drill_id == drill.id)
+                )
+                steps = step_result.scalars().all()
+                for step in steps:
+                    if step.status in ["preparing", "running", "cleaning"]:
+                        step.status = "stopped"
+                        step.ended_at = datetime.utcnow()
+            await session.commit()
+            print(f"已清理 {len(zombie_drills)} 个僵尸演练")
