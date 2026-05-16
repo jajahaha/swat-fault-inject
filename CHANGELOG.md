@@ -2,6 +2,35 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.7.6] - 2026-05-16
+
+### Added
+
+- **DDL锁阻塞场景并发执行支持**
+  - 新增 `_execute_run_scripts_concurrently` 方法支持混合模式脚本并发执行
+  - centralized脚本（DDL事务）先启动获取表锁
+  - distributed脚本（INSERT/UPDATE/DELETE）并发执行被阻塞
+  - 新增 `_execute_single_script_with_iterations` 支持脚本迭代执行
+
+- **DDL锁阻塞测试场景**
+  - 场景包含4个运行脚本：DDL事务 + INSERT + UPDATE + DELETE
+  - DDL事务获取表锁后保持600秒
+  - IUD操作并发执行，被DDL锁阻塞
+
+### Changed
+
+- **演练详情布局优化**
+  - 演练概述卡片置于顶部（故障类型、描述、连接数据库、执行模式等）
+  - 演练步骤卡片置于中间（显示正在执行的阶段和具体SQL/脚本）
+  - 执行日志卡片置于底部
+
+- `drill_executor.py`: 新增混合模式脚本并发执行逻辑
+- `DrillManagement.jsx`: 演练详情弹窗布局重组
+
+### Fixed
+
+- 前端测试修复：版本号格式验证、按钮文本更新
+
 ## [1.7.5] - 2026-05-16
 
 ### Added

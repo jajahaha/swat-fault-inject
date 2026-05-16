@@ -21,7 +21,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="SWAT Fault Inject Platform",
     description="Database fault injection platform for testing high-load scenarios",
-    version="1.7.5",  # 版本升级 - 新增多形态支持
+    version="1.7.6",  # 版本升级 - DDL锁阻塞场景并发执行支持
     lifespan=lifespan,
 )
 
@@ -44,4 +44,4 @@ app.include_router(sql_console_router)  # SQL控制台路由
 
 @app.get("/")
 async def root():
-    return {"message": "SWAT Fault Inject Platform API", "version": "1.7.5"}
+    return {"message": "SWAT Fault Inject Platform API", "version": "1.7.6"}
