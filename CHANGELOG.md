@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.7.8] - 2026-05-17
+
+### Changed
+
+- **侧边栏界面优化**
+  - 侧边栏使用现代深蓝青渐变色：`#1e3a5f → #0d2137 → #0a1929`
+  - Banner布局调整：SWAT (上) + Fault Injection (下)
+  - Logo图标更换为火焰图标 (FireOutlined)，青色渐变发光效果
+  - 正文页面背景调整为协调的浅灰蓝渐变
+
+- **数据库配置表格优化**
+  - 给表格列设置固定宽度，防止内容溢出
+  - 长文本列添加 `ellipsis: true` 省略号显示
+  - 表格添加 `scroll={{ x: 'max-content' }}` 水平滚动支持
+
+- **Layout布局修复**
+  - 主布局添加 `overflow: 'hidden'` 防止整体溢出
+  - 侧边栏添加 `flexShrink: 0` 固定宽度
+  - Content区域添加 `minWidth: 0` 和 `overflow: 'auto'`
+
+### Technical
+
+- 版本号更新文件：start.sh, stop.sh, package.json, Layout.jsx, main.py
+
 ## [1.7.7] - 2026-05-16
 
 ### Changed

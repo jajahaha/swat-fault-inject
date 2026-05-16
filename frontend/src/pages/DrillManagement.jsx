@@ -988,15 +988,19 @@ function DrillManagement() {
               {/* 第二行：故障类型、描述 */}
               {selectedDrill.steps && selectedDrill.steps[0]?.scenario && (
                 <Row gutter={16} style={{ marginBottom: 12 }}>
-                  <Col span={4}>
-                    <Text type="secondary">故障类型：</Text>
-                    <Tag color="blue" style={{ marginLeft: 4 }}>
-                      {SCENARIO_TYPE_CONFIG[selectedDrill.steps[0].scenario.type]?.label || selectedDrill.steps[0].scenario.type}
-                    </Tag>
+                  <Col span={6}>
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                      <Text type="secondary">故障类型：</Text>
+                      <Tag color="blue" style={{ marginLeft: 4 }}>
+                        {SCENARIO_TYPE_CONFIG[selectedDrill.steps[0].scenario.type]?.label || selectedDrill.steps[0].scenario.type}
+                      </Tag>
+                    </div>
                   </Col>
-                  <Col span={20}>
-                    <Text type="secondary">演练描述：</Text>
-                    <Text>{selectedDrill.description || selectedDrill.steps[0].scenario.description || '-'}</Text>
+                  <Col span={18}>
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                      <Text type="secondary">演练描述：</Text>
+                      <Text style={{ marginLeft: 4 }}>{selectedDrill.description || selectedDrill.steps[0].scenario.description || '-'}</Text>
+                    </div>
                   </Col>
                 </Row>
               )}

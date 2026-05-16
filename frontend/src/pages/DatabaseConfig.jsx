@@ -293,12 +293,15 @@ function DatabaseConfig() {
       title: '名称',
       dataIndex: 'name',
       key: 'name',
+      width: 120,
+      ellipsis: true,
       render: (name) => <span style={{ fontWeight: 500 }}>{name}</span>,
     },
     {
       title: '类型',
       dataIndex: 'db_type',
       key: 'db_type',
+      width: 100,
       render: (type) => {
         const typeInfo = dbTypes.find(t => t.value === type) || { label: type }
         const colors = DB_TYPE_COLORS[type] || { bg: '#f5f5f5', text: '#666', border: '#d9d9d9' }
@@ -321,6 +324,8 @@ function DatabaseConfig() {
       title: '连接方式',
       dataIndex: 'connection_method',
       key: 'connection_method',
+      width: 150,
+      ellipsis: true,
       render: (method) => {
         const methodInfo = connectionMethods.find(m => m.value === method) || { label: method }
         return <Tag color={CONNECTION_METHOD_COLORS[method] || 'default'}>{methodInfo.label}</Tag>
@@ -330,6 +335,7 @@ function DatabaseConfig() {
       title: '部署形态',
       dataIndex: 'deployment_mode',
       key: 'deployment_mode',
+      width: 80,
       render: (mode) => {
         const modeInfo = DEPLOYMENT_MODE_COLORS[mode] || { bg: '#f5f5f5', text: '#666', label: mode || '集中式' }
         return (
@@ -350,29 +356,37 @@ function DatabaseConfig() {
       title: '主机', 
       dataIndex: 'host', 
       key: 'host',
+      width: 120,
+      ellipsis: true,
       render: (host) => <span style={{ color: '#666' }}>{host}</span>,
     },
     { 
       title: '端口', 
       dataIndex: 'port', 
       key: 'port',
+      width: 70,
       render: (port) => <span style={{ color: '#999' }}>{port}</span>,
     },
     { 
       title: '数据库', 
       dataIndex: 'database', 
       key: 'database',
+      width: 100,
+      ellipsis: true,
       render: (db) => <span style={{ color: '#666' }}>{db}</span>,
     },
     { 
       title: '用户名', 
       dataIndex: 'username', 
       key: 'username',
+      width: 80,
+      ellipsis: true,
       render: (user) => <span style={{ color: '#999' }}>{user}</span>,
     },
     {
       title: '状态',
       key: 'status',
+      width: 100,
       render: (_, record) => (
         <Button
           size="small"
@@ -388,6 +402,7 @@ function DatabaseConfig() {
     {
       title: '操作',
       key: 'action',
+      width: 120,
       render: (_, record) => (
         <Space size="small">
           <Button
@@ -547,6 +562,7 @@ function DatabaseConfig() {
             showSizeChanger: false,
             style: { marginTop: 16 },
           }}
+          scroll={{ x: 'max-content' }}
           style={{
             borderRadius: '8px',
           }}

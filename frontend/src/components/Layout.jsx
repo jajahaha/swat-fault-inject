@@ -1,9 +1,9 @@
 import React from 'react'
 import { Layout as AntLayout, Menu, Typography } from 'antd'
-import { DatabaseOutlined, ThunderboltOutlined, RocketOutlined, ApiOutlined } from '@ant-design/icons'
+import { DatabaseOutlined, ThunderboltOutlined, RocketOutlined, ApiOutlined, FireOutlined } from '@ant-design/icons'
 import { useNavigate, useLocation } from 'react-router-dom'
 
-const { Header, Content, Sider } = AntLayout
+const { Content, Sider } = AntLayout
 const { Text } = Typography
 
 function Layout({ children }) {
@@ -34,83 +34,96 @@ function Layout({ children }) {
   ]
 
   return (
-    <AntLayout style={{ minHeight: '100vh' }}>
-      <Header
+    <AntLayout style={{ minHeight: '100vh', width: '100vw', overflow: 'hidden' }}>
+      <Sider 
+        width={220} 
         style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          padding: '0 24px',
-          height: '64px',
-          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
+          background: 'linear-gradient(180deg, #1e3a5f 0%, #0d2137 50%, #0a1929 100%)',
+          boxShadow: '4px 0 24px rgba(0, 0, 0, 0.25)',
+          flexShrink: 0,
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <ThunderboltOutlined style={{ fontSize: '28px', color: '#fff' }} />
-          <Text style={{ color: '#fff', fontSize: '20px', fontWeight: 600 }}>
-            SWAT Fault Inject
-          </Text>
-        </div>
-        <div style={{ 
-          background: 'rgba(255, 255, 255, 0.2)',
-          padding: '4px 12px',
-          borderRadius: '12px',
-          color: '#fff',
-          fontSize: '12px',
-          fontWeight: 500,
+        {/* Banner 区域 */}
+        <div style={{
+          padding: '24px 20px',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
         }}>
-          v1.7.7
-        </div>
-      </Header>
-      <AntLayout>
-        <Sider 
-          width={220} 
-          style={{
-            background: '#fff',
-            boxShadow: '2px 0 8px rgba(0, 0, 0, 0.05)',
-          }}
-        >
-          <div style={{ 
-            padding: '16px 24px',
-            borderBottom: '1px solid #f0f0f0',
+          <div style={{
+            width: '44px',
+            height: '44px',
+            borderRadius: '12px',
+            background: 'linear-gradient(135deg, #06b6d4 0%, #0891b2 50%, #0e7490 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 4px 16px rgba(6, 182, 212, 0.35)',
           }}>
-            <Text type="secondary" style={{ fontSize: '12px', fontWeight: 500 }}>
-              功能模块
+            <FireOutlined style={{ fontSize: '24px', color: '#fff' }} />
+          </div>
+          <div>
+            <Text style={{ fontSize: '18px', fontWeight: 700, color: '#fff', letterSpacing: '0.5px', display: 'block' }}>
+              SWAT
+            </Text>
+            <Text style={{ fontSize: '12px', fontWeight: 500, color: 'rgba(255, 255, 255, 0.65)', letterSpacing: '0.3px' }}>
+              Fault Injection · v1.7.8
             </Text>
           </div>
-          <Menu
-            mode="inline"
-            selectedKeys={[location.pathname]}
-            items={menuItems.map(item => ({
-              ...item,
-              style: {
-                margin: '4px 8px',
-                borderRadius: '8px',
-                height: '48px',
-                lineHeight: '48px',
-                transition: 'all 0.3s ease',
-              },
-            }))}
-            onClick={({ key }) => navigate(key)}
-            style={{
-              height: '100%',
-              borderRight: 0,
-              padding: '8px 0',
-              background: 'transparent',
-            }}
-          />
-        </Sider>
-        <Content
+        </div>
+
+        {/* 导航分组标题 */}
+        <div style={{ 
+          padding: '20px 24px 12px',
+        }}>
+          <Text style={{ 
+            fontSize: '11px', 
+            fontWeight: 600, 
+            color: 'rgba(255, 255, 255, 0.35)',
+            textTransform: 'uppercase',
+            letterSpacing: '1.5px',
+          }}>
+            功能模块
+          </Text>
+        </div>
+
+        {/* 菜单 */}
+        <Menu
+          mode="inline"
+          selectedKeys={[location.pathname]}
+          items={menuItems.map(item => ({
+            ...item,
+            style: {
+              margin: '4px 12px',
+              borderRadius: '10px',
+              height: '46px',
+              lineHeight: '46px',
+              transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+            },
+          }))}
+          onClick={({ key }) => navigate(key)}
           style={{
-            padding: '24px',
-            background: 'linear-gradient(180deg, #f5f7fa 0%, #f0f2f5 100%)',
-            minHeight: 'calc(100vh - 64px)',
+            height: '100%',
+            borderRight: 0,
+            padding: '8px 0',
+            background: 'transparent',
           }}
-        >
-          {children}
-        </Content>
-      </AntLayout>
+          theme="dark"
+        />
+      </Sider>
+      <Content
+        style={{
+          padding: '28px',
+          background: 'linear-gradient(135deg, #f8fafc 0%, #f0f4f8 50%, #e8f0f7 100%)',
+          minHeight: '100vh',
+          flex: 1,
+          minWidth: 0,
+          overflow: 'auto',
+        }}
+      >
+        {children}
+      </Content>
     </AntLayout>
   )
 }

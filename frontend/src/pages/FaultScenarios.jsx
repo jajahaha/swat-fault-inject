@@ -21,6 +21,7 @@ import {
   Alert,
   Upload,
   TreeSelect,
+  Collapse,
 } from 'antd'
 import {
   PlusOutlined,
@@ -679,13 +680,13 @@ function FaultScenarios() {
         </Upload.Dragger>
       </Modal>
 
-      {/* 创建/编辑场景弹窗 */}
+      {/* 创建/编辑场景弹窗 - 优化版 */}
       <Modal
         title={editingScenario ? '编辑故障场景' : '新建故障场景'}
         open={modalVisible}
         onOk={handleSubmit}
         onCancel={() => setModalVisible(false)}
-        width={900}
+        width={720}
         okButtonProps={{
           style: {
             background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
@@ -694,311 +695,261 @@ function FaultScenarios() {
         }}
       >
         <Form form={form} layout="vertical">
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item
-                name="name"
-                label="场景名称"
-                rules={[{ required: true, message: '请输入场景名称' }]}
-              >
-                <Input placeholder="例如: 高并发CPU压力测试" />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                name="type"
-                label="故障类型"
-                rules={[{ required: true, message: '请选择故障类型' }]}
-              >
-                <Select>
-                  {Object.entries(SCENARIO_TYPE_CONFIG).map(([key, val]) => (
-                    <Select.Option key={key} value={key}>
-                      <Tag style={{ background: val.bg, color: val.color, border: `1px solid ${val.color}` }}>
-                        {val.label}
-                      </Tag>
-                    </Select.Option>
-                  ))}
-                </Select>
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Row gutter={16}>
-            <Col span={8}>
-              <Form.Item
-                name="category1"
-                label="一级分类"
-                rules={[{ required: true, message: '请选择一级分类' }]}
-              >
-                <Select onChange={(val) => {
-                  const category2Keys = Object.keys(CATEGORY2_CONFIG[val])
-                  const category2First = category2Keys[0]
-                  const category3Keys = Object.keys(CATEGORY3_CONFIG[val]?.[category2First] || {})
-                  form.setFieldsValue({ 
-                    category2: category2First,
-                    category3: category3Keys[0] || 'query'
-                  })
-                }}>
-                  {Object.entries(CATEGORY1_CONFIG).map(([key, val]) => (
-                    <Select.Option key={key} value={key}>
-                      <Tag style={{ background: val.bg, color: val.color, border: `1px solid ${val.color}` }}>
-                        {val.label}
-                      </Tag>
-                      <Text type="secondary" style={{ marginLeft: 8, fontSize: '12px' }}>{val.desc}</Text>
-                    </Select.Option>
-                  ))}
-                </Select>
-              </Form.Item>
-            </Col>
-            <Col span={8}>
-              <Form.Item
-                name="category2"
-                label="二级分类"
-                rules={[{ required: true, message: '请选择二级分类' }]}
-              >
-                <Select onChange={(val) => {
-                  const category1 = form.getFieldValue('category1') || 'slow'
-                  const category3Keys = Object.keys(CATEGORY3_CONFIG[category1]?.[val] || {})
-                  form.setFieldsValue({ category3: category3Keys[0] || 'query' })
-                }}>
-                  {(form.getFieldValue('category1') || 'slow') && 
-                    Object.entries(CATEGORY2_CONFIG[form.getFieldValue('category1') || 'slow']).map(([key, val]) => (
+          {/* 基本信息 - 紧凑布局 */}
+          <Card size="small" style={{ marginBottom: 16, background: '#fafafa' }} title={<Text strong>基本信息</Text>}>
+            <Row gutter={16}>
+              <Col span={8}>
+                <Form.Item name="name" label="场景名称" rules={[{ required: true, message: '必填' }]}>
+                  <Input placeholder="如: CPU压力测试" />
+                </Form.Item>
+              </Col>
+              <Col span={8}>
+                <Form.Item name="type" label="故障类型" rules={[{ required: true }]}>
+                  <Select>
+                    {Object.entries(SCENARIO_TYPE_CONFIG).map(([key, val]) => (
+                      <Select.Option key={key} value={key}>{val.label}</Select.Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+              </Col>
+              <Col span={8}>
+                <Form.Item name="description" label="描述">
+                  <Input placeholder="简短描述" />
+                </Form.Item>
+              </Col>
+            </Row>
+            {/* 分类选择 - 合并一行 */}
+            <Row gutter={16}>
+              <Col span={8}>
+                <Form.Item name="category1" label="分类" rules={[{ required: true }]}>
+                  <Select onChange={(val) => {
+                    const c2Keys = Object.keys(CATEGORY2_CONFIG[val])
+                    const c2First = c2Keys[0]
+                    const c3Keys = Object.keys(CATEGORY3_CONFIG[val]?.[c2First] || {})
+                    form.setFieldsValue({ category2: c2First, category3: c3Keys[0] || 'query' })
+                  }}>
+                    {Object.entries(CATEGORY1_CONFIG).map(([key, val]) => (
                       <Select.Option key={key} value={key}>
-                        <span>{val.label}</span>
-                        <Text type="secondary" style={{ marginLeft: 8, fontSize: '12px' }}>{val.desc}</Text>
+                        <Tag style={{ background: val.bg, color: val.color, border: `1px solid ${val.color}`, marginRight: 4 }}>{val.label}</Tag>
+                        {val.desc}
                       </Select.Option>
-                    ))
-                  }
-                </Select>
-              </Form.Item>
-            </Col>
-            <Col span={8}>
-              <Form.Item
-                name="category3"
-                label="三级分类"
-                rules={[{ required: true, message: '请选择三级分类' }]}
-              >
-                <Select>
-                  {((form.getFieldValue('category1') || 'slow') && (form.getFieldValue('category2') || 'cpu')) && 
-                    Object.entries(CATEGORY3_CONFIG[form.getFieldValue('category1') || 'slow']?.[form.getFieldValue('category2') || 'cpu'] || {}).map(([key, val]) => (
-                      <Select.Option key={key} value={key}>
-                        <span>{val.label}</span>
-                        <Text type="secondary" style={{ marginLeft: 8, fontSize: '12px' }}>{val.desc}</Text>
-                      </Select.Option>
-                    ))
-                  }
-                </Select>
-              </Form.Item>
-            </Col>
-          </Row>
+                    ))}
+                  </Select>
+                </Form.Item>
+              </Col>
+              <Col span={8}>
+                <Form.Item name="category2" rules={[{ required: true }]}>
+                  <Select onChange={(val) => {
+                    const c1 = form.getFieldValue('category1') || 'slow'
+                    const c3Keys = Object.keys(CATEGORY3_CONFIG[c1]?.[val] || {})
+                    form.setFieldsValue({ category3: c3Keys[0] || 'query' })
+                  }}>
+                    {(form.getFieldValue('category1') || 'slow') && 
+                      Object.entries(CATEGORY2_CONFIG[form.getFieldValue('category1') || 'slow']).map(([key, val]) => (
+                        <Select.Option key={key} value={key}>{val.label}</Select.Option>
+                      ))
+                    }
+                  </Select>
+                </Form.Item>
+              </Col>
+              <Col span={8}>
+                <Form.Item name="category3" rules={[{ required: true }]}>
+                  <Select>
+                    {((form.getFieldValue('category1') || 'slow') && (form.getFieldValue('category2') || 'cpu')) && 
+                      Object.entries(CATEGORY3_CONFIG[form.getFieldValue('category1') || 'slow']?.[form.getFieldValue('category2') || 'cpu'] || {}).map(([key, val]) => (
+                        <Select.Option key={key} value={key}>{val.label}</Select.Option>
+                      ))
+                    }
+                  </Select>
+                </Form.Item>
+              </Col>
+            </Row>
+          </Card>
 
-          <Form.Item name="description" label="描述">
-            <TextArea rows={2} placeholder="场景描述" />
-          </Form.Item>
-
-          <Divider orientation="left">⚡ 运行环节参数（默认故障注入）</Divider>
-          <Alert
-            message="如果未配置自定义脚本，将使用以下参数进行默认故障注入"
-            type="info"
-            showIcon
-            style={{ marginBottom: 16 }}
-          />
-          <Row gutter={16}>
-            <Col span={8}>
-              <Form.Item name={['config', 'concurrency']} label="并发连接数">
-                <InputNumber min={1} max={500} style={{ width: '100%' }} />
-              </Form.Item>
-            </Col>
-            <Col span={8}>
-              <Form.Item name={['config', 'duration_seconds']} label="持续时间(秒)">
-                <InputNumber min={1} max={3600} style={{ width: '100%' }} />
-              </Form.Item>
-            </Col>
-            <Col span={8}>
-              <Form.Item name={['config', 'interval_ms']} label="查询间隔(毫秒)">
-                <InputNumber min={10} max={10000} style={{ width: '100%' }} />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Form.Item name={['config', 'query_template']} label="SQL查询模板">
-            <TextArea rows={3} placeholder="SELECT ..." />
-          </Form.Item>
-
-          <Divider orientation="left">📋 前置环节脚本</Divider>
-          <Form.Item name="setup_timeout" label="前置环节超时(秒)">
-            <InputNumber min={10} max={100000} style={{ width: 200 }} />
-          </Form.Item>
-          <Form.List name="setup_scripts">
-            {(fields, { add, remove }) => (
-              <>
-                {fields.map(({ key, name, ...restField }) => (
-                  <Card key={key} size="small" style={{ marginBottom: 8 }} title={`前置脚本 ${name + 1}`}>
-                    <Row gutter={16}>
-                      <Col span={4}>
-                        <Form.Item {...restField} name={[name, 'type']} label="类型">
-                          <Select>
-                            <Select.Option value="sql">SQL</Select.Option>
-                            <Select.Option value="shell">Shell</Select.Option>
-                          </Select>
-                        </Form.Item>
-                      </Col>
-                      <Col span={4}>
-                        <Form.Item {...restField} name={[name, 'mode']} label="形态">
-                          <Select>
-                            <Select.Option value="all">ALL</Select.Option>
-                            <Select.Option value="centralized">集中式</Select.Option>
-                            <Select.Option value="distributed">分布式</Select.Option>
-                          </Select>
-                        </Form.Item>
-                      </Col>
-                      <Col span={4}>
-                        <Form.Item {...restField} name={[name, 'timeout']} label="超时(秒)">
-                          <InputNumber min={5} max={100000} style={{ width: '100%' }} />
-                        </Form.Item>
-                      </Col>
-                      <Col span={12}>
-                        <Form.Item {...restField} name={[name, 'description']} label="描述">
-                          <Input placeholder="脚本用途说明" />
-                        </Form.Item>
-                      </Col>
-                    </Row>
-                    <Form.Item {...restField} name={[name, 'content']} label="脚本内容">
-                      <TextArea rows={3} placeholder="SQL语句或Shell命令" />
-                    </Form.Item>
-                    <Button type="link" danger onClick={() => remove(name)} icon={<DeleteOutlined />}>
-                      删除脚本
+          {/* 三环节配置 - 默认展开运行环节 */}
+          <Collapse defaultActiveKey={['run']} style={{ marginBottom: 16 }}>
+            <Collapse.Panel key="setup" header={<><Tag color="blue">前置准备</Tag> <Text type="secondary">创建测试环境</Text></>}>
+              <Row gutter={16}>
+                <Col span={8}>
+                  <Form.Item name="setup_timeout" label="环节超时">
+                    <InputNumber min={10} max={600} style={{ width: '100%' }} addonAfter="秒" placeholder="60" />
+                  </Form.Item>
+                </Col>
+              </Row>
+              <Divider style={{ margin: '8px 0' }} />
+              <Form.List name="setup_scripts">
+                {(fields, { add, remove }) => (
+                  <>
+                    {fields.map(({ key, name, ...restField }) => (
+                      <Card key={key} size="small" style={{ marginBottom: 8 }} bodyStyle={{ padding: '12px' }}>
+                        <Row gutter={8}>
+                          <Col span={3}>
+                            <Form.Item {...restField} name={[name, 'type']} label="类型">
+                              <Select size="small" style={{ width: '100%' }}>
+                                <Select.Option value="sql">SQL</Select.Option>
+                                <Select.Option value="shell">Shell</Select.Option>
+                              </Select>
+                            </Form.Item>
+                          </Col>
+                          <Col span={3}>
+                            <Form.Item {...restField} name={[name, 'timeout']} label="超时">
+                              <InputNumber size="small" min={5} max={300} style={{ width: '100%' }} addonAfter="s" />
+                            </Form.Item>
+                          </Col>
+                          <Col span={8}>
+                            <Form.Item {...restField} name={[name, 'description']} label="说明">
+                              <Input size="small" placeholder="脚本用途" />
+                            </Form.Item>
+                          </Col>
+                          <Col span={9}>
+                            <Form.Item {...restField} name={[name, 'content']} label="内容">
+                              <Input.TextArea size="small" rows={1} placeholder="SQL或命令" autoSize />
+                            </Form.Item>
+                          </Col>
+                        </Row>
+                        <Button type="link" size="small" danger onClick={() => remove(name)} icon={<DeleteOutlined />}>删除</Button>
+                      </Card>
+                    ))}
+                    <Button size="small" type="dashed" onClick={() => add({ type: 'sql', mode: 'all', timeout: 30 })} icon={<PlusOutlined />}>
+                      添加脚本
                     </Button>
-                  </Card>
-                ))}
-                <Button type="dashed" onClick={() => add({ type: 'sql', mode: 'all', timeout: 30 })} block icon={<PlusOutlined />}>
-                  添加前置脚本
-                </Button>
-              </>
-            )}
-          </Form.List>
+                  </>
+                )}
+              </Form.List>
+            </Collapse.Panel>
 
-          <Divider orientation="left">🔥 运行环节脚本（可选，替代默认注入）</Divider>
-          <Alert
-            message="配置运行脚本后，将替代默认故障注入参数，执行自定义脚本"
-            type="warning"
-            showIcon
-            style={{ marginBottom: 16 }}
-          />
-          <Form.Item name="run_timeout" label="运行环节超时(秒)">
-            <InputNumber min={10} max={100000} style={{ width: 200 }} />
-          </Form.Item>
-          <Form.List name="run_scripts">
-            {(fields, { add, remove }) => (
-              <>
-                {fields.map(({ key, name, ...restField }) => (
-                  <Card key={key} size="small" style={{ marginBottom: 8, background: '#fff7e6' }} title={`运行脚本 ${name + 1}`}>
-                    <Row gutter={16}>
-                      <Col span={4}>
-                        <Form.Item {...restField} name={[name, 'type']} label="类型">
-                          <Select>
-                            <Select.Option value="sql">SQL</Select.Option>
-                            <Select.Option value="shell">Shell</Select.Option>
-                            <Select.Option value="stress">Stress (压力测试)</Select.Option>
-                          </Select>
-                        </Form.Item>
-                      </Col>
-                      <Col span={4}>
-                        <Form.Item {...restField} name={[name, 'mode']} label="形态">
-                          <Select>
-                            <Select.Option value="all">ALL</Select.Option>
-                            <Select.Option value="centralized">集中式</Select.Option>
-                            <Select.Option value="distributed">分布式</Select.Option>
-                          </Select>
-                        </Form.Item>
-                      </Col>
-                      <Col span={4}>
-                        <Form.Item {...restField} name={[name, 'timeout']} label="超时(秒)">
-                          <InputNumber min={10} max={100000} style={{ width: '100%' }} />
-                        </Form.Item>
-                      </Col>
-                      <Col span={4}>
-                        <Form.Item {...restField} name={[name, 'iterations']} label="执行次数">
-                          <InputNumber min={1} max={1000} style={{ width: '100%' }} />
-                        </Form.Item>
-                      </Col>
-                      <Col span={4}>
-                        <Form.Item {...restField} name={[name, 'interval_ms']} label="间隔(毫秒)">
-                          <InputNumber min={0} max={10000} style={{ width: '100%' }} />
-                        </Form.Item>
-                      </Col>
-                      <Col span={4}>
-                        <Form.Item {...restField} name={[name, 'description']} label="描述">
-                          <Input placeholder="脚本用途" />
-                        </Form.Item>
-                      </Col>
-                    </Row>
-                    <Form.Item {...restField} name={[name, 'content']} label="脚本内容">
-                      <TextArea rows={3} placeholder="SQL语句、Shell命令或压力测试参数" />
+            <Collapse.Panel key="run" header={<><Tag color="orange">故障注入</Tag> <Text type="secondary">执行压力测试</Text></>}>
+              <Row gutter={16}>
+                <Col span={8}>
+                  <Form.Item name="run_timeout" label="环节超时">
+                    <InputNumber min={10} max={600} style={{ width: '100%' }} addonAfter="秒" placeholder="120" />
+                  </Form.Item>
+                </Col>
+              </Row>
+              
+              {/* 默认注入参数 */}
+              <Alert type="info" style={{ marginBottom: 8, fontSize: 12 }} message="未配置脚本时，将使用以下参数执行默认故障注入" />
+              <Card size="small" style={{ marginBottom: 8, background: '#fffbe6' }} bodyStyle={{ padding: '12px' }}>
+                <Row gutter={12}>
+                  <Col span={6}>
+                    <Form.Item name={['config', 'concurrency']} label="并发数">
+                      <InputNumber size="small" min={1} max={500} style={{ width: '100%' }} placeholder="50" />
                     </Form.Item>
-                    <Button type="link" danger onClick={() => remove(name)} icon={<DeleteOutlined />}>
-                      删除脚本
-                    </Button>
-                  </Card>
-                ))}
-                <Button type="dashed" onClick={() => add({ type: 'sql', mode: 'all', timeout: 60, iterations: 1, interval_ms: 100 })} block icon={<PlusOutlined />}>
-                  添加运行脚本
-                </Button>
-              </>
-            )}
-          </Form.List>
+                  </Col>
+                  <Col span={6}>
+                    <Form.Item name={['config', 'duration_seconds']} label="持续时间">
+                      <InputNumber size="small" min={1} max={3600} style={{ width: '100%' }} addonAfter="秒" placeholder="60" />
+                    </Form.Item>
+                  </Col>
+                  <Col span={6}>
+                    <Form.Item name={['config', 'interval_ms']} label="查询间隔">
+                      <InputNumber size="small" min={10} max={10000} style={{ width: '100%' }} addonAfter="ms" placeholder="100" />
+                    </Form.Item>
+                  </Col>
+                </Row>
+                <Form.Item name={['config', 'query_template']} label="SQL模板" style={{ marginBottom: 0 }}>
+                  <Input.TextArea size="small" rows={2} placeholder="SELECT count(*) FROM ..." style={{ fontFamily: 'monospace' }} />
+                </Form.Item>
+              </Card>
 
-          <Divider orientation="left">🧹 清理环节脚本</Divider>
-          <Form.Item name="cleanup_timeout" label="清理环节超时(秒)">
-            <InputNumber min={5} max={100000} style={{ width: 200 }} />
-          </Form.Item>
-          <Form.List name="cleanup_scripts">
-            {(fields, { add, remove }) => (
-              <>
-                {fields.map(({ key, name, ...restField }) => (
-                  <Card key={key} size="small" style={{ marginBottom: 8, background: '#f6ffed' }} title={`清理脚本 ${name + 1}`}>
-                    <Row gutter={16}>
-                      <Col span={4}>
-                        <Form.Item {...restField} name={[name, 'type']} label="类型">
-                          <Select>
-                            <Select.Option value="sql">SQL</Select.Option>
-                            <Select.Option value="shell">Shell</Select.Option>
-                          </Select>
-                        </Form.Item>
-                      </Col>
-                      <Col span={4}>
-                        <Form.Item {...restField} name={[name, 'mode']} label="形态">
-                          <Select>
-                            <Select.Option value="all">ALL</Select.Option>
-                            <Select.Option value="centralized">集中式</Select.Option>
-                            <Select.Option value="distributed">分布式</Select.Option>
-                          </Select>
-                        </Form.Item>
-                      </Col>
-                      <Col span={4}>
-                        <Form.Item {...restField} name={[name, 'timeout']} label="超时(秒)">
-                          <InputNumber min={5} max={100000} style={{ width: '100%' }} />
-                        </Form.Item>
-                      </Col>
-                      <Col span={12}>
-                        <Form.Item {...restField} name={[name, 'description']} label="描述">
-                          <Input placeholder="脚本用途说明" />
-                        </Form.Item>
-                      </Col>
-                    </Row>
-                    <Form.Item {...restField} name={[name, 'content']} label="脚本内容">
-                      <TextArea rows={3} placeholder="SQL语句或Shell命令" />
-                    </Form.Item>
-                    <Button type="link" danger onClick={() => remove(name)} icon={<DeleteOutlined />}>
-                      删除脚本
+              <Divider style={{ margin: '12px 0' }} orientation="left"><Text type="secondary">自定义脚本（替代默认注入）</Text></Divider>
+              <Form.List name="run_scripts">
+                {(fields, { add, remove }) => (
+                  <>
+                    {fields.map(({ key, name, ...restField }) => (
+                      <Card key={key} size="small" style={{ marginBottom: 8, background: '#fff7e6' }} bodyStyle={{ padding: '12px' }}>
+                        <Row gutter={8}>
+                          <Col span={3}>
+                            <Form.Item {...restField} name={[name, 'type']} label="类型">
+                              <Select size="small" style={{ width: '100%' }}>
+                                <Select.Option value="sql">SQL</Select.Option>
+                                <Select.Option value="shell">Shell</Select.Option>
+                                <Select.Option value="stress">Stress</Select.Option>
+                              </Select>
+                            </Form.Item>
+                          </Col>
+                          <Col span={3}>
+                            <Form.Item {...restField} name={[name, 'timeout']} label="超时">
+                              <InputNumber size="small" min={10} max={300} style={{ width: '100%' }} addonAfter="s" />
+                            </Form.Item>
+                          </Col>
+                          <Col span={3}>
+                            <Form.Item {...restField} name={[name, 'iterations']} label="次数">
+                              <InputNumber size="small" min={1} max={1000} style={{ width: '100%' }} placeholder="1" />
+                            </Form.Item>
+                          </Col>
+                          <Col span={7}>
+                            <Form.Item {...restField} name={[name, 'description']} label="说明">
+                              <Input size="small" placeholder="脚本用途" />
+                            </Form.Item>
+                          </Col>
+                          <Col span={8}>
+                            <Form.Item {...restField} name={[name, 'content']} label="内容">
+                              <Input.TextArea size="small" rows={1} placeholder="SQL或命令" autoSize />
+                            </Form.Item>
+                          </Col>
+                        </Row>
+                        <Button type="link" size="small" danger onClick={() => remove(name)} icon={<DeleteOutlined />}>删除</Button>
+                      </Card>
+                    ))}
+                    <Button size="small" type="dashed" onClick={() => add({ type: 'sql', mode: 'all', timeout: 60, iterations: 1 })} icon={<PlusOutlined />}>
+                      添加脚本
                     </Button>
-                  </Card>
-                ))}
-                <Button type="dashed" onClick={() => add({ type: 'sql', mode: 'all', timeout: 10 })} block icon={<PlusOutlined />}>
-                  添加清理脚本
-                </Button>
-              </>
-            )}
-          </Form.List>
+                  </>
+                )}
+              </Form.List>
+            </Collapse.Panel>
+
+            <Collapse.Panel key="cleanup" header={<><Tag color="green">清理环境</Tag> <Text type="secondary">清除测试数据</Text></>}>
+              <Row gutter={16}>
+                <Col span={8}>
+                  <Form.Item name="cleanup_timeout" label="环节超时">
+                    <InputNumber min={5} max={300} style={{ width: '100%' }} addonAfter="秒" placeholder="30" />
+                  </Form.Item>
+                </Col>
+              </Row>
+              <Divider style={{ margin: '8px 0' }} />
+              <Form.List name="cleanup_scripts">
+                {(fields, { add, remove }) => (
+                  <>
+                    {fields.map(({ key, name, ...restField }) => (
+                      <Card key={key} size="small" style={{ marginBottom: 8, background: '#f6ffed' }} bodyStyle={{ padding: '12px' }}>
+                        <Row gutter={8}>
+                          <Col span={3}>
+                            <Form.Item {...restField} name={[name, 'type']} label="类型">
+                              <Select size="small" style={{ width: '100%' }}>
+                                <Select.Option value="sql">SQL</Select.Option>
+                                <Select.Option value="shell">Shell</Select.Option>
+                              </Select>
+                            </Form.Item>
+                          </Col>
+                          <Col span={3}>
+                            <Form.Item {...restField} name={[name, 'timeout']} label="超时">
+                              <InputNumber size="small" min={5} max={60} style={{ width: '100%' }} addonAfter="s" />
+                            </Form.Item>
+                          </Col>
+                          <Col span={8}>
+                            <Form.Item {...restField} name={[name, 'description']} label="说明">
+                              <Input size="small" placeholder="脚本用途" />
+                            </Form.Item>
+                          </Col>
+                          <Col span={9}>
+                            <Form.Item {...restField} name={[name, 'content']} label="内容">
+                              <Input.TextArea size="small" rows={1} placeholder="SQL或命令" autoSize />
+                            </Form.Item>
+                          </Col>
+                        </Row>
+                        <Button type="link" size="small" danger onClick={() => remove(name)} icon={<DeleteOutlined />}>删除</Button>
+                      </Card>
+                    ))}
+                    <Button size="small" type="dashed" onClick={() => add({ type: 'sql', mode: 'all', timeout: 10 })} icon={<PlusOutlined />}>
+                      添加脚本
+                    </Button>
+                  </>
+                )}
+              </Form.List>
+            </Collapse.Panel>
+          </Collapse>
         </Form>
       </Modal>
     </div>
